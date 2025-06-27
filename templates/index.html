@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Public Chat with File Sharing</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; }
+    #chat { max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    input, button { font-size: 16px; padding: 5px; margin-top: 5px; }
+    #username { margin-bottom: 10px; display: block; }
+  </style>
+</head>
+<body>
+  <h2>Public Chat with File Sharing</h2>
+
+  <input id="username" type="text" placeholder="Enter your name" />
+  <div id="chat"></div>
+
+  <input id="msg" type="text" placeholder="Type your message..." />
+  <button id="sendBtn">Send</button>
+
+  <br><br>
+  <input type="file" id="fileInput" />
+  <button id="fileBtn">Send File</button>
+
+  <script>
+    const chatDiv = document.getElementById("chat");
+    const ws = new WebSocket("ws://" + location.hostname + ":8765");
+
+    ws.onopen = () => console.log("Connected to chat server");
+    ws.onerror = (e) => console.error("WebSocket error", e);
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const div = document.createElement("div");
+
+      if (data.type === "text") {
+        div.textContent = data.content;
+      } else if (data.type === "file") {
+        const a = document.createElement("a");
+        a.href = data.fileData;
+        a.download = data.fileName;
+        a.textContent = `${data.sender} sent a file: ${data.fileName}`;
+        a.target = "_blank";
+        div.appendChild(a);
+      }
+
+      chatDiv.appendChild(div);
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    };
+
+    function sendMessage() {
+      const msgInput = document.getElementById("msg");
+      const name = document.getElementById("username").value.trim() || "Anonymous";
+      const msg = msgInput.value.trim();
+
+      if (msg && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "text",
+          sender: name,
+          content: `${name}: ${msg}`
+        }));
+        msgInput.value = "";
+      }
+    }
+
+    function sendFile() {
+      const fileInput = document.getElementById("fileInput");
+      const file = fileInput.files[0];
+      const name = document.getElementById("username").value.trim() || "Anonymous";
+
+      if (file && ws.readyState === WebSocket.OPEN) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64Data = reader.result;
+          ws.send(JSON.stringify({
+            type: "file",
+            sender: name,
+            fileName: file.name,
+            fileData: base64Data
+          }));
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+    document.getElementById("msg").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+    document.getElementById("fileBtn").addEventListener("click", sendFile);
+  </script>
+</body>
+</html>
