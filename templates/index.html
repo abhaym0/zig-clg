@@ -31,23 +31,23 @@
     ws.onerror = (e) => console.error("WebSocket error", e);
 
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const div = document.createElement("div");
+  const data = JSON.parse(event.data);
+  const div = document.createElement("div");
 
-      if (data.type === "text") {
-        div.textContent = data.content;
-      } else if (data.type === "file") {
-        const a = document.createElement("a");
-        a.href = data.fileData;
-        a.download = data.fileName;
-        a.textContent = `${data.sender} sent a file: ${data.fileName}`;
-        a.target = "_blank";
-        div.appendChild(a);
-      }
+  if (data.type === "text") {
+    div.textContent = data.content;
+  } else if (data.type === "file") {
+    const a = document.createElement("a");
+    a.href = data.fileUrl;
+    a.download = data.fileName;
+    a.textContent = `${data.sender} sent a file: ${data.fileName}`;
+    a.target = "_blank";
+    div.appendChild(a);
+  }
 
-      chatDiv.appendChild(div);
-      chatDiv.scrollTop = chatDiv.scrollHeight;
-    };
+  chatDiv.appendChild(div);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+};
 
     function sendMessage() {
       const msgInput = document.getElementById("msg");
@@ -64,25 +64,31 @@
       }
     }
 
-    function sendFile() {
-      const fileInput = document.getElementById("fileInput");
-      const file = fileInput.files[0];
-      const name = document.getElementById("username").value.trim() || "Anonymous";
+    async function sendFile() {
+  const fileInput = document.getElementById("fileInput");
+  const file = fileInput.files[0];
+  const name = document.getElementById("username").value.trim() || "Anonymous";
 
-      if (file && ws.readyState === WebSocket.OPEN) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64Data = reader.result;
-          ws.send(JSON.stringify({
-            type: "file",
-            sender: name,
-            fileName: file.name,
-            fileData: base64Data
-          }));
-        };
-        reader.readAsDataURL(file);
-      }
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("http://" + location.hostname + ":8000/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await response.json();
+    if (result.url) {
+      ws.send(JSON.stringify({
+        type: "file",
+        sender: name,
+        fileName: file.name,
+        fileUrl: result.url
+      }));
     }
+  }
+}
 
     document.getElementById("sendBtn").addEventListener("click", sendMessage);
     document.getElementById("msg").addEventListener("keydown", (e) => {
