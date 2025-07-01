@@ -24,6 +24,12 @@
   <button id="fileBtn">Send File</button>
 
   <script>
+    const username = localStorage.getItem("username");
+
+    if(!username){
+      window.location.href = "/templates/register.html";
+    }
+
     const chatDiv = document.getElementById("chat");
     const ws = new WebSocket("ws://" + location.hostname + ":8765");
 
@@ -51,7 +57,7 @@
 
     function sendMessage() {
       const msgInput = document.getElementById("msg");
-      const name = document.getElementById("username").value.trim() || "Anonymous";
+      const name =  localStorage.getItem("username") || "Anonymous";
       const msg = msgInput.value.trim();
 
       if (msg && ws.readyState === WebSocket.OPEN) {
@@ -67,7 +73,7 @@
     async function sendFile() {
   const fileInput = document.getElementById("fileInput");
   const file = fileInput.files[0];
-  const name = document.getElementById("username").value.trim() || "Anonymous";
+  const name =  localStorage.getItem("username") || "Anonymous";
 
   if (file) {
     const formData = new FormData();

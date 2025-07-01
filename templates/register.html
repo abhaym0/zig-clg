@@ -1,0 +1,53 @@
+<!-- templates/register.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Register</title>
+</head>
+
+<body>
+  <h2>User Registration</h2>
+  <form id="registerForm">
+    <input type="text" name="username" placeholder="Username" required /><br />
+    <input type="password" name="password" placeholder="Password" required /><br />
+    <input type="text" name="name" placeholder="Full Name" /><br />
+    <input type="text" name="device_id" placeholder="Device ID" /><br />
+    <button type="submit">Register</button>
+  </form>
+
+  <p id="response"></p>
+
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        username: form.username.value,
+        password: form.password.value,
+        name: form.name.value,
+        device_id: form.device_id.value,
+      };
+
+      const res = await fetch("http://localhost:8080/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            localStorage.setItem("username", data.username);
+            localStorage.setItem("name", data.name || "");
+            alert("Welcome, " + data.name);
+            window.location.href = "/"; // or open chat
+          }
+        });
+      const result = await res.json();
+      document.getElementById("response").textContent = result.message;
+    });
+  </script>
+</body>
+
+</html>

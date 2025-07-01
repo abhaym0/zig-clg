@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+</head>
+<body>
+  <form id="loginForm">
+    <label>Username</label>
+    <input type="text" class="username" placeholder="Enter your username" />
+    <label>Password</label>
+    <input type="password" class="pass" placeholder="Enter the password" />
+    <button type="submit">Login</button>
+  </form>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const username = document.querySelector(".username").value;
+      const password = document.querySelector(".pass").value;
+
+      const res = await fetch("http://localhost:8080/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      console.log(data);
+
+      if (data.status === "success") {
+        // Save to localStorage
+        localStorage.setItem("loggedInUser", JSON.stringify(data));
+        alert("Login successful!");
+        // redirect to chat page
+        window.location.href = "/";
+      } else {
+        alert("Login failed: " + data.message);
+      }
+    });
+  </script>
+</body>
+</html>
