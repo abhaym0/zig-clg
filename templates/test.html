@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat UI</title>
+  <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+
+<div id="container">
+  <!-- Left Sidebar -->
+  <div id="user-panel">
+    <h3>Chats</h3>
+    <ul id="user-list">
+
+    </ul>
+  </div>
+
+  <!-- Right Chat Window -->
+  <div id="chat-panel">
+    <div id="messages"></div>
+    <form id="messageForm">
+      <input type="text" id="messageInput" placeholder="Type your message" required />
+      <button class="send-button" type="submit">Send</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const currentUsername = localStorage.getItem("username")
+
+  const ws = new WebSocket("ws://" + location.hostname + ":8765");
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ username: currentUsername }));
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "user_list") {
+      const userList = document.getElementById("user-list");
+      userList.innerHTML = "";
+      data.users.forEach((user) => {
+        const li = document.createElement("li");
+        li.textContent = user;
+        userList.appendChild(li);
+      });
+    } else {
+      const messages = document.getElementById("messages");
+      const p = document.createElement("p");
+      p.textContent = `${data.sender}: ${data.content}`;
+      messages.appendChild(p);
+    }
+  };
+
+  const messageForm = document.getElementById("messageForm");
+  const messageInput = document.getElementById("messageInput");
+
+  messageForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const message = {
+      sender: currentUsername,
+      type: "text",
+      content: messageInput.value,
+    };
+    ws.send(JSON.stringify(message));
+    messageInput.value = "";
+  });
+</script>
+
+</body>
+</html>

@@ -101,11 +101,13 @@ async def handle_options(request):
         "Access-Control-Allow-Headers": "Content-Type",
     })
 
+
 async def start_ws_and_api():
     app = web.Application()
     app.router.add_post('/api/register', handle_register)
     app.router.add_route("OPTIONS", "/api/register", handle_options)
-    app.router.add_post("/api/login",do_POST)
+    # app.router.add_get("/api/connected-users", get_connected_users)
+    # app.router.add_post("/api/login",do_POST)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -116,6 +118,7 @@ async def start_ws_and_api():
     async with websockets.serve(handle_ws, "0.0.0.0", 8765):
         print("WebSocket server running at ws://0.0.0.0:8765")
         await asyncio.Future()
+
 
 if __name__ == "__main__":
     init_db()

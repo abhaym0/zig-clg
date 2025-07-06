@@ -9,19 +9,38 @@
     input, button { font-size: 16px; padding: 5px; margin-top: 5px; }
     #username { margin-bottom: 10px; display: block; }
   </style>
+  <link
+    href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css"
+    rel="stylesheet"
+/>
 </head>
 <body>
-  <h2>Public Chat with File Sharing</h2>
 
-  <input id="username" type="text" placeholder="Enter your name" />
-  <div id="chat"></div>
+
+  <!-- <div id="chat"></div>
 
   <input id="msg" type="text" placeholder="Type your message..." />
   <button id="sendBtn">Send</button>
 
   <br><br>
   <input type="file" id="fileInput" />
-  <button id="fileBtn">Send File</button>
+  <button id="fileBtn">Send File</button> -->
+
+  <div class="main">
+    <div class="users">
+      <div class="msg-div">messages</div>
+      <div class="users-div">
+        <ul>
+          <li>Abhay</li>
+          <li>John</li>
+          <li>Jane</li>
+        </ul>
+      </div>
+    </div>
+    <div class="chat-div">
+
+    </div>
+  </div>
 
   <script>
     const username = localStorage.getItem("username");
@@ -32,6 +51,14 @@
 
     const chatDiv = document.getElementById("chat");
     const ws = new WebSocket("ws://" + location.hostname + ":8765");
+
+    ws.addEventListener("open", () => {
+    ws.send(JSON.stringify({
+        sender: username,
+        type: "join", // NEW: clearly marks it as join
+        content: `${username} joined`
+    }));
+});
 
     ws.onopen = () => console.log("Connected to chat server");
     ws.onerror = (e) => console.error("WebSocket error", e);

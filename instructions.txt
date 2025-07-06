@@ -1,0 +1,6 @@
+must change ports according to the machine i.e. port 8080 will not work in the lab pc
+
+must install nessery packages
+    pip install aiohttp aiohttp-cors websockets 
+
+install the extention called sql lite viewer

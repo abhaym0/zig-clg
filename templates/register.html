@@ -5,17 +5,27 @@
 <head>
   <meta charset="UTF-8" />
   <title>Register</title>
+  <link rel="stylesheet" href="./css/register.css">
 </head>
 
 <body>
-  <h2>User Registration</h2>
-  <form id="registerForm">
-    <input type="text" name="username" placeholder="Username" required /><br />
-    <input type="password" name="password" placeholder="Password" required /><br />
-    <input type="text" name="name" placeholder="Full Name" /><br />
-    <input type="text" name="device_id" placeholder="Device ID" /><br />
-    <button type="submit">Register</button>
-  </form>
+  
+  <div class="main">
+
+    <div class="form-div">
+      <h2>Create Account</h2>
+      
+      <form id="registerForm">
+        <input type="text" name="username" placeholder="Username" required /><br />
+        <input type="password" name="password" placeholder="Password" required /><br />
+        <input type="text" name="name" placeholder="Full Name" /><br />
+        <input type="text" name="device_id" placeholder="Device ID" /><br />
+        <button class="btn" type="submit">Create Account</button>
+      </form>
+
+    </div>
+
+  </div>
 
   <p id="response"></p>
 
