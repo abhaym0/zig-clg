@@ -4,16 +4,29 @@
   <meta charset="UTF-8">
   <title>Chat UI</title>
   <link rel="stylesheet" href="./css/index.css">
+  <style>
+    /* Only temporary: Add this if you want to preview styles quickly */
+    
+
+    
+
+    
+
+   
+  </style>
 </head>
 <body>
 
 <div id="container">
   <!-- Left Sidebar -->
   <div id="user-panel">
-    <h3>Chats</h3>
-    <ul id="user-list">
-
-    </ul>
+    <div class="user-header">
+      <h3 id="displayName">Name</h3>
+      <p id="displayUsername">@username</p>
+    </div>
+    <button onclick="logout()">Logout</button>
+    <h4>Chats</h4>
+    <ul id="user-list"></ul>
   </div>
 
   <!-- Right Chat Window -->
@@ -27,7 +40,11 @@
 </div>
 
 <script>
-  const currentUsername = localStorage.getItem("username")
+  const currentUsername = localStorage.getItem("username");
+  const currentName = localStorage.getItem("name") || "Unknown";
+
+  document.getElementById("displayName").textContent = currentName;
+  document.getElementById("displayUsername").textContent = "@" + currentUsername;
 
   const ws = new WebSocket("ws://" + location.hostname + ":8765");
 
@@ -43,14 +60,31 @@
       userList.innerHTML = "";
       data.users.forEach((user) => {
         const li = document.createElement("li");
+        li.classList.add("user-list");
         li.textContent = user;
         userList.appendChild(li);
       });
     } else {
       const messages = document.getElementById("messages");
-      const p = document.createElement("p");
-      p.textContent = `${data.sender}: ${data.content}`;
-      messages.appendChild(p);
+      const messageWrapper = document.createElement("div");
+      messageWrapper.classList.add("message");
+
+      if (data.sender === currentUsername) {
+        messageWrapper.classList.add("my-message");
+      } else {
+        messageWrapper.classList.add("other-message");
+      }
+
+      messageWrapper.innerHTML = `
+        <div class="message-content">${data.content}</div>
+        <div class="message-meta">
+          <span class="sender-name">${data.sender}</span>
+          <span class="timestamp">${data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      `;
+
+      messages.appendChild(messageWrapper);
+      messages.scrollTop = messages.scrollHeight;
     }
   };
 
@@ -59,14 +93,25 @@
 
   messageForm.addEventListener("submit", (e) => {
     e.preventDefault();
+
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     const message = {
       sender: currentUsername,
       type: "text",
       content: messageInput.value,
+      timestamp: timeString
     };
+
     ws.send(JSON.stringify(message));
     messageInput.value = "";
   });
+
+  function logout(){
+    localStorage.clear();
+    window.location.href = "/templates/register.html";
+  }
 </script>
 
 </body>

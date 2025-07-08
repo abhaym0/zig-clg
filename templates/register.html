@@ -31,32 +31,37 @@
 
   <script>
     document.getElementById("registerForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const data = {
-        username: form.username.value,
-        password: form.password.value,
-        name: form.name.value,
-        device_id: form.device_id.value,
-      };
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    username: form.username.value,
+    password: form.password.value,
+    name: form.name.value,
+    device_id: form.device_id.value,
+  };
 
-      const res = await fetch("http://localhost:8080/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "success") {
-            localStorage.setItem("username", data.username);
-            localStorage.setItem("name", data.name || "");
-            alert("Welcome, " + data.name);
-            window.location.href = "/"; // or open chat
-          }
-        });
-      const result = await res.json();
-      document.getElementById("response").textContent = result.message;
+  try {
+    const res = await fetch("http://localhost:8900/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
     });
+
+    const result = await res.json();
+
+    if (result.status === "success") {
+      localStorage.setItem("username", result.username);
+      localStorage.setItem("name", result.name || "");
+      alert("Welcome, " + result.name);
+      window.location.href = "/";
+    } else {
+      document.getElementById("response").textContent = result.message;
+    }
+  } catch (error) {
+    console.error("Registration error:", error);
+    document.getElementById("response").textContent = "Registration failed.";
+  }
+});
   </script>
 </body>
 

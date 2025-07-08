@@ -1,6 +1,8 @@
-must change ports according to the machine i.e. port 8080 will not work in the lab pc
+must change ports according to the machine i.e. port 8900 will not work in the lab pc
 
 must install nessery packages
     pip install aiohttp aiohttp-cors websockets 
 
 install the extention called sql lite viewer
+
+change the localhost to the server pc's ip address (i.e. 192.168.1.145:8000)

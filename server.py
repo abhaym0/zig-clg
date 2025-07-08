@@ -86,7 +86,12 @@ async def handle_register(request):
 
         result = register_user(username, password, name, ip, device_id)
 
-        return web.json_response(result, headers={
+        return web.json_response({
+                "status": "success",
+                "message": "User registered successfully.",
+                "username": username,
+                "name": name
+            }, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
@@ -111,9 +116,9 @@ async def start_ws_and_api():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    site = web.TCPSite(runner, '0.0.0.0', 8900)
     await site.start()
-    print("API server running at http://0.0.0.0:8080")
+    print("API server running at http://0.0.0.0:8900")
 
     async with websockets.serve(handle_ws, "0.0.0.0", 8765):
         print("WebSocket server running at ws://0.0.0.0:8765")

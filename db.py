@@ -64,7 +64,12 @@ def register_user(username, password, name=None, ip_address=None, device_id=None
             VALUES (?, ?, ?, ?, ?)
         """, (username, hashed_password, name, ip_address, device_id))
         conn.commit()
-        return {"status": "success", "message": "User registered"}
+        return {
+            "status": "success",
+            "message": "User registered successfully",
+            "username": username,
+            "name": name
+        }
     except sqlite3.IntegrityError:
         return {"status": "error", "message": "Username already exists"}
     finally:
