@@ -106,11 +106,37 @@ async def handle_options(request):
         "Access-Control-Allow-Headers": "Content-Type",
     })
 
+async def handle_login(request):
+    try:
+        data = await request.json()
+        username = data.get("username")
+        password = data.get("password")
+
+        from db import login_user
+        result = login_user(username, password)
+
+        if result.get("status") == "success":
+            return web.json_response(result, headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            })
+        else:
+            return web.json_response(result, status=401, headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            })
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
 
 async def start_ws_and_api():
     app = web.Application()
     app.router.add_post('/api/register', handle_register)
     app.router.add_route("OPTIONS", "/api/register", handle_options)
+    app.router.add_post('/api/login', handle_login)
+    app.router.add_route("OPTIONS", "/api/login", handle_options)
     # app.router.add_get("/api/connected-users", get_connected_users)
     # app.router.add_post("/api/login",do_POST)
 

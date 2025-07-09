@@ -1,81 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Chat UI</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
   <link rel="stylesheet" href="./css/index.css">
-  <style>
-    /* Only temporary: Add this if you want to preview styles quickly */
-    
-
-    
-
-    
-
-   
-  </style>
 </head>
+
 <body>
 
-<div id="container">
-  <!-- Left Sidebar -->
-  <div id="user-panel">
-    <div class="user-header">
-      <h3 id="displayName">Name</h3>
-      <p id="displayUsername">@username</p>
+  <div id="container">
+    <!-- Left Sidebar -->
+    <div id="user-panel">
+      <div class="user-header">
+        <h3 id="displayName">Name</h3>
+        <p id="displayUsername">@username</p>
+      </div>
+      <button onclick="logout()">Logout</button>
+      <h4>Chats</h4>
+      <ul id="user-list"></ul>
     </div>
-    <button onclick="logout()">Logout</button>
-    <h4>Chats</h4>
-    <ul id="user-list"></ul>
+
+    <!-- Right Chat Window -->
+    <div id="chat-panel">
+      <div id="messages"></div>
+      <form id="messageForm">
+        <label class="file-upload-label">
+          <i class="ri-attachment-line"></i>
+          <input type="file" id="fileInput" hidden />
+        </label>
+        <input type="text" id="messageInput" placeholder="Type your message" required />
+        <button class="send-button" type="submit">Send</button>
+      </form>
+    </div>
   </div>
 
-  <!-- Right Chat Window -->
-  <div id="chat-panel">
-    <div id="messages"></div>
-    <form id="messageForm">
-      <input type="text" id="messageInput" placeholder="Type your message" required />
-      <button class="send-button" type="submit">Send</button>
-    </form>
-  </div>
-</div>
+  <!-- Audio notification -->
+  <audio id="notifySound" src="/notification.mp3" preload="auto"></audio>
 
-<script>
-  const currentUsername = localStorage.getItem("username");
-  const currentName = localStorage.getItem("name") || "Unknown";
-
-  document.getElementById("displayName").textContent = currentName;
-  document.getElementById("displayUsername").textContent = "@" + currentUsername;
-
-  const ws = new WebSocket("ws://" + location.hostname + ":8765");
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ username: currentUsername }));
-  };
-
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    if (data.type === "user_list") {
-      const userList = document.getElementById("user-list");
-      userList.innerHTML = "";
-      data.users.forEach((user) => {
-        const li = document.createElement("li");
-        li.classList.add("user-list");
-        li.textContent = user;
-        userList.appendChild(li);
-      });
-    } else {
-      const messages = document.getElementById("messages");
-      const messageWrapper = document.createElement("div");
-      messageWrapper.classList.add("message");
-
-      if (data.sender === currentUsername) {
-        messageWrapper.classList.add("my-message");
-      } else {
-        messageWrapper.classList.add("other-message");
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission();
       }
+    });
+  </script>
 
-      messageWrapper.innerHTML = `
+  <script>
+    const currentUsername = localStorage.getItem("username");
+    const currentName = localStorage.getItem("name") || "Unknown";
+
+    document.getElementById("displayName").textContent = currentName;
+    document.getElementById("displayUsername").textContent = "@" + currentUsername;
+
+    const ws = new WebSocket("ws://" + location.hostname + ":8765");
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ username: currentUsername }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      const fileInput = document.getElementById("fileInput");
+
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const response = await fetch("http://localhost:8000/upload", {
+            method: "POST",
+            body: formData
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.filePath) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const message = {
+              sender: currentUsername,
+              type: "file",
+              filename: file.name,
+              content: result.filePath, // path like /uploads/abc.jpg
+              timestamp: timeString
+            };
+
+            ws.send(JSON.stringify(message));
+            fileInput.value = "";
+          } else {
+            alert("Upload failed");
+          }
+        } catch (error) {
+          console.error("File upload error:", error);
+          alert("Error uploading file");
+        }
+      });
+
+
+      if (data.type === "user_list") {
+        const userList = document.getElementById("user-list");
+        userList.innerHTML = "";
+        data.users.forEach((user) => {
+          const li = document.createElement("li");
+          li.classList.add("user-list");
+          li.textContent = user;
+          userList.appendChild(li);
+        });
+      } else {
+        const messages = document.getElementById("messages");
+        const messageWrapper = document.createElement("div");
+        messageWrapper.classList.add("message");
+
+        if (data.sender === currentUsername) {
+          messageWrapper.classList.add("my-message");
+        } else {
+          messageWrapper.classList.add("other-message");
+
+          // 🔔 Show notification if from another user
+          if (Notification.permission === "granted") {
+            new Notification(`💬 New message from ${data.sender}`, {
+              body: data.content,
+            });
+          }
+
+          // 🔊 Play notification sound
+          // document.getElementById("notifySound").play().catch(() => {
+          //   // autoplay may be blocked; safe to ignore
+          // });
+        }
+
+        messageWrapper.innerHTML = `
         <div class="message-content">${data.content}</div>
         <div class="message-meta">
           <span class="sender-name">${data.sender}</span>
@@ -83,36 +144,65 @@
         </div>
       `;
 
-      messages.appendChild(messageWrapper);
-      messages.scrollTop = messages.scrollHeight;
-    }
-  };
-
-  const messageForm = document.getElementById("messageForm");
-  const messageInput = document.getElementById("messageInput");
-
-  messageForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const message = {
-      sender: currentUsername,
-      type: "text",
-      content: messageInput.value,
-      timestamp: timeString
+        messages.appendChild(messageWrapper);
+        messages.scrollTop = messages.scrollHeight;
+      }
     };
 
-    ws.send(JSON.stringify(message));
-    messageInput.value = "";
-  });
+    const messageForm = document.getElementById("messageForm");
+    const messageInput = document.getElementById("messageInput");
 
-  function logout(){
-    localStorage.clear();
-    window.location.href = "/templates/register.html";
-  }
-</script>
+    messageForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const message = {
+        sender: currentUsername,
+        type: "text",
+        content: messageInput.value,
+        timestamp: timeString
+      };
+
+      ws.send(JSON.stringify(message));
+      messageInput.value = "";
+    });
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "/templates/register.html";
+    }
+
+
+    const fileInput = document.getElementById("fileInput");
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const message = {
+          sender: currentUsername,
+          type: "file",
+          filename: file.name,
+          content: reader.result, // base64 string
+          timestamp: timeString
+        };
+
+        ws.send(JSON.stringify(message));
+        fileInput.value = ""; // reset input
+      };
+
+      reader.readAsDataURL(file); // read file as base64 string
+    });
+  </script>
 
 </body>
+
 </html>

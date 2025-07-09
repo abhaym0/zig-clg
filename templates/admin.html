@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    h2 { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background-color: #f4f4f4; }
+    .kick-btn, .ban-btn {
+      background-color: #f44336;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Admin Dashboard</h2>
+  <div>
+    <h3>Registered Users</h3>
+    <table id="user-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Username</th>
+          <th>IP</th>
+          <th>Device ID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Filled by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    fetch("/api/all-users")
+      .then(res => res.json())
+      .then(data => {
+        const table = document.getElementById("user-table").querySelector("tbody");
+        data.users.forEach(user => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${user.name}</td>
+            <td>${user.username}</td>
+            <td>${user.ip}</td>
+            <td>${user.device_id}</td>
+            <td>
+              <button class="kick-btn" onclick="kickUser('${user.username}')">Kick</button>
+              <button class="ban-btn" onclick="banUser('${user.username}')">Ban</button>
+            </td>`;
+          table.appendChild(row);
+        });
+      });
+
+    function kickUser(username) {
+      fetch(`/api/kick/${username}`, { method: "POST" });
+    }
+
+    function banUser(username) {
+      fetch(`/api/ban/${username}`, { method: "POST" });
+    }
+  </script>
+</body>
+</html>

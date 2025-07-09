@@ -91,6 +91,7 @@ def login_user(username, password):
         return {
             "status": "success",
             "id": user[0],
+            "username": username,
             "name": user[1],
             "ip_address": user[2],
             "device_id": user[3]
@@ -100,3 +101,12 @@ def login_user(username, password):
             "status": "error",
             "message": "Invalid username or password"
         }
+
+def delete_Record(record_id):
+    conn = sqlite3.connect("zig_clg.db")
+    c = conn.cursor()
+    c.execute("DELETE FROM messages WHERE id = ?", (record_id,))
+    conn.commit()
+    conn.close()
+
+delete_Record(41)

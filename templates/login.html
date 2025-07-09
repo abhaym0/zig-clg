@@ -13,11 +13,11 @@
     <div class="form-div">
       <h2>Login</h2>
       <form id="loginForm">
-        <label>Username</label><br/>
-        <input type="text" class="username" placeholder="Enter your username" /><br/>
-        <label>Password</label><br/>
-        <input type="password" class="pass" placeholder="Enter the password" /><br/>
-        <button type="submit" class="btn">Login</button><br/>
+        <label>Username</label><br />
+        <input type="text" class="username" placeholder="Enter your username" /><br />
+        <label>Password</label><br />
+        <input type="password" class="pass" placeholder="Enter the password" /><br />
+        <button type="submit" class="btn">Login</button><br />
       </form>
     </div>
   </div>
@@ -42,10 +42,11 @@
 
       if (data.status === "success") {
         // Save to localStorage
-        localStorage.setItem("loggedInUser", JSON.stringify(data));
-        alert("Login successful!");
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("name", data.name || "");
+        // alert("Login successful!");
         // redirect to chat page
-        window.location.href = "/";
+        window.location.href = "/templates/test.html";
       } else {
         alert("Login failed: " + data.message);
       }
