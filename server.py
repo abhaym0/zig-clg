@@ -3,8 +3,9 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 import threading, asyncio, websockets, os, json #type: ignore
 from websocket_handler import handle_ws
-from db import init_db, register_user
+from db import init_db, register_user, fetchAllUsers
 from aiohttp import web #type: ignore
+import aiofiles
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -130,6 +131,35 @@ async def handle_login(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
+async def upload_file(request):
+    reader = await request.multipart()
+    field = await reader.next()
+    assert field.name == "file"
+
+    filename = field.filename
+    file_path = f"./uploads/{filename}"
+
+    # Save the file
+    async with aiofiles.open(file_path, 'wb') as f:
+        while True:
+            chunk = await field.read_chunk()
+            if not chunk:
+                break
+            await f.write(chunk)
+
+    # Broadcast file info to all users
+    from websocket_handler import connected_clients
+    for ws in connected_clients.values():
+        await ws.send(json.dumps({
+            "type": "file",
+            "filename": filename,
+            "url": f"http://localhost:8900/uploads/{filename}"
+        }))
+
+    return web.json_response({"status": "success"}, headers={
+        "Access-Control-Allow-Origin": "*"
+    })
+
 
 async def start_ws_and_api():
     app = web.Application()
@@ -137,6 +167,12 @@ async def start_ws_and_api():
     app.router.add_route("OPTIONS", "/api/register", handle_options)
     app.router.add_post('/api/login', handle_login)
     app.router.add_route("OPTIONS", "/api/login", handle_options)
+    app.router.add_route("GET", "/api/users", fetchAllUsers)
+    app.router.add_post("/api/upload", upload_file)
+    app.router.add_static("/uploads/", path="./uploads", name="uploads")
+    app.router.add_route("OPTIONS", "/uploads", handle_options)
+    app.router.add_route("OPTIONS", "/api/upload", handle_options)
+
     # app.router.add_get("/api/connected-users", get_connected_users)
     # app.router.add_post("/api/login",do_POST)
 

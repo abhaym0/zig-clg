@@ -25,11 +25,14 @@
     <!-- Right Chat Window -->
     <div id="chat-panel">
       <div id="messages"></div>
-      <form id="messageForm">
+      <form id="fileForm">
         <label class="file-upload-label">
           <i class="ri-attachment-line"></i>
           <input type="file" id="fileInput" hidden />
+          <button type="submit">send</button>
         </label>
+      </form>
+      <form id="messageForm">
         <input type="text" id="messageInput" placeholder="Type your message" required />
         <button class="send-button" type="submit">Send</button>
       </form>
@@ -45,6 +48,8 @@
         Notification.requestPermission();
       }
     });
+
+
   </script>
 
   <script>
@@ -62,46 +67,6 @@
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
-      const fileInput = document.getElementById("fileInput");
-
-      fileInput.addEventListener("change", async () => {
-        const file = fileInput.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-          const response = await fetch("http://localhost:8000/upload", {
-            method: "POST",
-            body: formData
-          });
-
-          const result = await response.json();
-
-          if (response.ok && result.filePath) {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            const message = {
-              sender: currentUsername,
-              type: "file",
-              filename: file.name,
-              content: result.filePath, // path like /uploads/abc.jpg
-              timestamp: timeString
-            };
-
-            ws.send(JSON.stringify(message));
-            fileInput.value = "";
-          } else {
-            alert("Upload failed");
-          }
-        } catch (error) {
-          console.error("File upload error:", error);
-          alert("Error uploading file");
-        }
-      });
 
 
       if (data.type === "user_list") {
@@ -173,34 +138,27 @@
       localStorage.clear();
       window.location.href = "/templates/register.html";
     }
+  </script>
 
+  <script>
+    document.getElementById("fileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const file = formData.get("file");
 
-    const fileInput = document.getElementById("fileInput");
+  const response = await fetch("http://localhost:8900/api/upload", {
+    method: "POST",
+    body: formData,
+  });
 
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files[0];
-      if (!file) return;
+  if (response.ok) {
+    alert("File sent successfully!");
+  } else {
+    alert("Failed to send file.");
+  }
 
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const message = {
-          sender: currentUsername,
-          type: "file",
-          filename: file.name,
-          content: reader.result, // base64 string
-          timestamp: timeString
-        };
-
-        ws.send(JSON.stringify(message));
-        fileInput.value = ""; // reset input
-      };
-
-      reader.readAsDataURL(file); // read file as base64 string
-    });
+  e.target.reset();
+});
   </script>
 
 </body>

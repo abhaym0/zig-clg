@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link rel="stylesheet" href="./css/register.css">
+</head>
+
+<body>
+  <div class="main">
+    <div class="form-div">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Admin Username</label><br />
+        <input type="text" class="username" placeholder="Enter your username" /><br />
+        <label>Admin Password</label><br />
+        <input type="password" class="pass" placeholder="Enter the password" /><br />
+        <button type="submit" class="btn">Login</button><br />
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const username = document.querySelector(".username").value;
+      const password = document.querySelector(".pass").value;
+
+      const res = await fetch("http://localhost:8900/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      console.log(data);
+
+      if (data.status === "success") {
+        // Save to localStorage
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("name", data.name || "");
+        // alert("Login successful!");
+        // redirect to chat page
+        window.location.href = "/templates/test.html";
+      } else {
+        alert("Login failed: " + data.message);
+      }
+    });
+  </script>
+</body>
+
+</html>

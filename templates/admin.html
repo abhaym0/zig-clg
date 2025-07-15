@@ -3,10 +3,10 @@
 <head>
   <title>Admin Panel</title>
   <style>
-    body { font-family: Arial; margin: 20px; }
+    body { font-family: Arial; margin: 20px; font-size: larger; }
     h2 { margin-top: 0; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: middle; }
     th { background-color: #f4f4f4; }
     .kick-btn, .ban-btn {
       background-color: #f44336;
@@ -37,12 +37,17 @@
     </table>
   </div>
 
-  <script>
-    fetch("/api/all-users")
-      .then(res => res.json())
-      .then(data => {
-        const table = document.getElementById("user-table").querySelector("tbody");
-        data.users.forEach(user => {
+   <script>
+    async function loadUsers() {
+      try {
+        const response = await fetch("http://localhost:8900/api/users", {
+          method: "GET",
+          // mode: "cors"
+        });
+        const data = await response.json();
+
+        const tableBody = document.getElementById("user-table").querySelector("tbody");
+        data.forEach(user => {
           const row = document.createElement("tr");
           row.innerHTML = `
             <td>${user.name}</td>
@@ -52,18 +57,56 @@
             <td>
               <button class="kick-btn" onclick="kickUser('${user.username}')">Kick</button>
               <button class="ban-btn" onclick="banUser('${user.username}')">Ban</button>
+              <button class="ban-btn" onclick="deleteUser('${user.username}')">Delete Acc.</button>
             </td>`;
-          table.appendChild(row);
+          tableBody.appendChild(row);
         });
+      } catch (error) {
+        console.error("Error loading users:", error);
+      }
+    }
+
+    loadUsers();
+
+    // async function kickUser(username) {
+    //   try {
+    //     await fetch(`http://localhost:8900/api/kick/${username}`, {
+    //       method: "POST",
+    //       mode: "cors"
+    //     });
+    //     alert(`User ${username} kicked.`);
+    //   } catch (error) {
+    //     console.error(`Failed to kick ${username}:`, error);
+    //   }
+    // }
+
+    // async function banUser(username) {
+    //   try {
+    //     await fetch(`http://localhost:8900/api/ban/${username}`, {
+    //       method: "POST",
+    //       mode: "cors"
+    //     });
+    //     alert(`User ${username} banned.`);
+    //   } catch (error) {
+    //     console.error(`Failed to ban ${username}:`, error);
+    //   }
+    // }
+
+    // Load users on page load
+    // loadUsers();
+  </script>
+
+  <script>
+     const fetchUsers = async ()=>{
+      const result = await fetch("http://localhost:8900/api/users", {
+        method: "GET",
       });
+      const data = await result.json();
+      console.log(data);
+      console.log("Hello")
+     }
 
-    function kickUser(username) {
-      fetch(`/api/kick/${username}`, { method: "POST" });
-    }
-
-    function banUser(username) {
-      fetch(`/api/ban/${username}`, { method: "POST" });
-    }
+     fetchUsers();
   </script>
 </body>
 </html>

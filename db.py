@@ -1,6 +1,9 @@
 # db.py
 import sqlite3
 import hashlib
+from aiohttp import web #type: ignore
+
+
 
 db_url = "zig_clg.db"
 
@@ -109,4 +112,34 @@ def delete_Record(record_id):
     conn.commit()
     conn.close()
 
-delete_Record(41)
+# delete_Record(42) 
+
+
+# admin side code
+
+async def fetchAllUsers(request):
+    try:
+        conn = sqlite3.connect(db_url)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, name, ip_address, device_id FROM users")
+        users = cursor.fetchall()
+        conn.close()
+
+        user_list = [
+            {
+                "id": row[0],
+                "username": row[1],
+                "name": row[2],
+                "ip": row[3],
+                "device_id": row[4]
+            }
+            for row in users
+        ]
+
+        return web.json_response(user_list, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
