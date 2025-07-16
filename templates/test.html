@@ -19,16 +19,20 @@
       </div>
       <button onclick="logout()">Logout</button>
       <h4>Chats</h4>
+      <button id="public-chat-btn" onclick="goToPublicChat()">📢 Public Chat</button>
       <ul id="user-list"></ul>
     </div>
 
     <!-- Right Chat Window -->
     <div id="chat-panel">
-      <div id="messages"></div>
+        <div id="chat-info">
+          <h4 id="chat-title">Public Chat</h4>
+        </div>
+        <div id="messages"></div>
       <form id="fileForm">
         <label class="file-upload-label">
           <i class="ri-attachment-line"></i>
-          <input type="file" id="fileInput" hidden />
+          <input type="file" id="fileInput" name="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.docx,.xlsx,.pptx,.zip,.rar" hidden />
           <button type="submit">send</button>
         </label>
       </form>
@@ -41,6 +45,7 @@
 
   <!-- Audio notification -->
   <audio id="notifySound" src="/notification.mp3" preload="auto"></audio>
+
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -65,9 +70,28 @@
       ws.send(JSON.stringify({ username: currentUsername }));
     };
 
+    ws.onclose = (event) => {
+      console.log('WebSocket closed:', event);
+      
+      // Check if the close reason indicates a kick
+      if (event.reason === "You have been kicked by admin") {
+        // Redirect to kicked page
+        window.location.href = "/templates/kicked.html";
+      } else {
+        // Handle other disconnection reasons (network issues, etc.)
+        console.log('Connection closed:', event.reason || 'Unknown reason');
+        // You could add a reconnection attempt here if needed
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    let activeChatUser = null;
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
 
       if (data.type === "user_list") {
         const userList = document.getElementById("user-list");
@@ -76,8 +100,38 @@
           const li = document.createElement("li");
           li.classList.add("user-list");
           li.textContent = user;
+          li.style.cursor = "pointer";
+          li.addEventListener("click", () => {
+            activeChatUser = user;
+            document.getElementById("chat-title").textContent = `💬 Chat with ${user}`;
+            loadPrivateMessages(user);
+          });
           userList.appendChild(li);
         });
+      } else if (data.type === "private_message_history") {
+        const messages = document.getElementById("messages");
+        messages.innerHTML = "";
+        data.messages.forEach(msg => {
+          const messageWrapper = document.createElement("div");
+          messageWrapper.classList.add("message");
+
+          if (msg.sender === currentUsername) {
+              messageWrapper.classList.add("my-message");
+          } else {
+              messageWrapper.classList.add("other-message");
+          }
+
+          messageWrapper.innerHTML = `
+            <div class="message-content">${msg.content}</div>
+            <div class="message-meta">
+              <span class="sender-name">${msg.sender}</span>
+              <span class="timestamp">${msg.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          `;
+
+          messages.appendChild(messageWrapper);
+        });
+
       } else {
         const messages = document.getElementById("messages");
         const messageWrapper = document.createElement("div");
@@ -101,8 +155,51 @@
           // });
         }
 
+        // Handle different message types
+        let messageContent = '';
+        if (data.type === 'image') {
+          messageContent = `
+            <div class="file-message">
+              <img src="${data.content}" alt="${data.fileName}" style="max-width: 300px; max-height: 200px; border-radius: 8px; cursor: pointer;" onclick="window.open('${data.content}', '_blank')">
+              <div class="file-info">📷 ${data.fileName}</div>
+            </div>
+          `;
+        } else if (data.type === 'file') {
+          const fileExtension = data.fileName.split('.').pop().toLowerCase();
+          let fileIcon = '📄';
+          
+          // Set appropriate icon based on file type
+          if (fileExtension === 'pdf') fileIcon = '📕';
+          else if (['doc', 'docx'].includes(fileExtension)) fileIcon = '📘';
+          else if (['xls', 'xlsx'].includes(fileExtension)) fileIcon = '📊';
+          else if (['ppt', 'pptx'].includes(fileExtension)) fileIcon = '📰';
+          else if (['zip', 'rar', '7z'].includes(fileExtension)) fileIcon = '📦';
+          else if (['txt'].includes(fileExtension)) fileIcon = '📝';
+          
+          messageContent = `
+            <div class="file-message">
+              <a href="${data.content}" target="_blank" download="${data.fileName}" style="text-decoration: none; color: #007bff;">
+                <div class="file-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f9f9f9;">
+                  <div style="font-size: 24px; text-align: center; margin-bottom: 8px;">${fileIcon}</div>
+                  <div style="font-weight: bold; margin-bottom: 4px;">${data.fileName}</div>
+                  <div style="font-size: 12px; color: #666;">Click to download</div>
+                </div>
+              </a>
+            </div>
+          `;
+        } else if (data.type === 'admin_broadcast') {
+          messageContent = `
+            <div class="admin-broadcast" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 10px; margin: 10px 0;">
+              <div style="font-weight: bold; color: #856404; margin-bottom: 5px;">📢 ADMIN ANNOUNCEMENT</div>
+              <div class="message-content" style="color: #856404;">${data.content}</div>
+            </div>
+          `;
+        } else {
+          messageContent = `<div class="message-content">${data.content}</div>`;
+        }
+
         messageWrapper.innerHTML = `
-        <div class="message-content">${data.content}</div>
+        ${messageContent}
         <div class="message-meta">
           <span class="sender-name">${data.sender}</span>
           <span class="timestamp">${data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -113,6 +210,15 @@
         messages.scrollTop = messages.scrollHeight;
       }
     };
+
+    function loadPrivateMessages(otherUser) {
+      const message = {
+        sender: currentUsername,
+        message_type: "get_private_messages",
+        other_user: otherUser
+      }
+      ws.send(JSON.stringify(message));
+    }
 
     const messageForm = document.getElementById("messageForm");
     const messageInput = document.getElementById("messageInput");
@@ -127,7 +233,9 @@
         sender: currentUsername,
         type: "text",
         content: messageInput.value,
-        timestamp: timeString
+        timestamp: timeString,
+        message_type: activeChatUser ? "private" : "public",
+        recipient: activeChatUser
       };
 
       ws.send(JSON.stringify(message));
@@ -138,27 +246,56 @@
       localStorage.clear();
       window.location.href = "/templates/register.html";
     }
+
+    function goToPublicChat() {
+      activeChatUser = null;
+      document.getElementById("chat-title").textContent = "📢 Public Chat";
+      document.getElementById("messages").innerHTML = "";
+      
+      // Load public messages
+      const previous_messages = [];
+      // We'll load them from the server on next connection
+      location.reload();
+    }
   </script>
 
   <script>
     document.getElementById("fileForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const file = formData.get("file");
-
-  const response = await fetch("http://localhost:8900/api/upload", {
-    method: "POST",
-    body: formData,
-  });
-
-  if (response.ok) {
-    alert("File sent successfully!");
-  } else {
-    alert("Failed to send file.");
-  }
-
-  e.target.reset();
-});
+      e.preventDefault();
+      
+      const fileInput = document.getElementById("fileInput");
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        alert("Please select a file first!");
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append("sender", currentUsername);
+      formData.append("file", file);
+      
+      try {
+        const response = await fetch("http://localhost:8900/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          console.log("File uploaded successfully:", result);
+          // File will be broadcasted via WebSocket automatically
+        } else {
+          alert("Failed to upload file: " + result.message);
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert("Error uploading file: " + error.message);
+      }
+      
+      fileInput.value = ""; // Clear the file input
+    });
   </script>
 
 </body>

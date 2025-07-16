@@ -1,6 +1,6 @@
 import asyncio
 import json
-from db import insert_message, get_all_messages
+from db import insert_message, get_all_messages, get_private_messages
 
 connected_clients = {}  # { websocket: username }
 
@@ -43,13 +43,50 @@ async def handle_ws(connection):
             print(f"[LOG] Message: {message}")
             try:
                 data = json.loads(message)
-
-                # Insert into DB (you can later skip for private messages)
-                insert_message(data["sender"], data["type"], data.get("content", ""), data.get("fileName", ""))
-
-                # Broadcast message to all users (for now, still public)
-                for client in connected_clients:
-                    await client.send(message)
+                
+                # Handle different message types
+                if data.get("message_type") == "private":
+                    # Private message handling
+                    recipient = data.get("recipient")
+                    if recipient:
+                        # Save to database as private message
+                        insert_message(
+                            data["sender"], 
+                            data["type"], 
+                            data.get("content", ""), 
+                            data.get("fileName", ""),
+                            recipient=recipient,
+                            is_private=True
+                        )
+                        
+                        # Send to recipient and sender only
+                        target_clients = []
+                        for client, username in connected_clients.items():
+                            if username == recipient or username == data["sender"]:
+                                target_clients.append(client)
+                        
+                        for client in target_clients:
+                            await client.send(message)
+                    
+                elif data.get("message_type") == "get_private_messages":
+                    # Send private message history
+                    other_user = data.get("other_user")
+                    if other_user:
+                        private_messages = get_private_messages(data["sender"], other_user)
+                        response = {
+                            "type": "private_message_history",
+                            "other_user": other_user,
+                            "messages": private_messages
+                        }
+                        await connection.send(json.dumps(response))
+                        
+                else:
+                    # Public message handling (default)
+                    insert_message(data["sender"], data["type"], data.get("content", ""), data.get("fileName", ""))
+                    
+                    # Broadcast to all users
+                    for client in connected_clients:
+                        await client.send(message)
 
             except Exception as e:
                 print("Error handling message:", e)

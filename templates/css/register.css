@@ -4,8 +4,10 @@ html,body{
     height: 100%;
     width: 100%;
     box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
 }
 
 .main{
@@ -15,61 +17,184 @@ html,body{
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* background: pink; */
+    position: relative;
+}
+
+.main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3e%3ccircle cx="20" cy="20" r="2" fill="%23ffffff" opacity="0.1"/%3e%3ccircle cx="80" cy="80" r="2" fill="%23ffffff" opacity="0.1"/%3e%3ccircle cx="40" cy="60" r="1" fill="%23ffffff" opacity="0.1"/%3e%3ccircle cx="60" cy="40" r="1" fill="%23ffffff" opacity="0.1"/%3e%3c/svg%3e');
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
 }
 
 .form-div{
-    border: 1px solid black;
-    padding: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 50px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 30px;
-    /* background: white; */
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1;
+    min-width: 400px;
+    transform: translateY(0);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-div:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
 }
 
 input{
-    padding: 15px;
-    margin: 15px;
-    border:1px solid black;
-    border-radius: 8px;
-    font-size: 20px;
-    /* display: flex; */
-    /* align-items: center; */
-    /* justify-content: center; */
+    padding: 18px 25px;
+    margin: 12px 0;
+    border: 2px solid #e1e8ed;
+    border-radius: 12px;
+    font-size: 18px;
+    /* width: 100%; */
+    /* max-width: 300px; */
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+}
 
+input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: rgba(255, 255, 255, 1);
 }
 
 input::placeholder{
-    font-size: 20px;
+    font-size: 16px;
+    color: #888;
 }
 
 .btn{
-    font-size: 15px;
-    margin: 10px;
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    font-size: 19px;
-    font-weight: bold;
+    font-size: 18px;
+    margin: 20px 0 10px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 18px 40px;
+    font-weight: 600;
+    cursor: pointer;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 200px;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
 }
 
 .btn:hover{
-    background: black;
-    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
 }
 
 label{
-    font-size: 22px;
-    font-weight:400;
-    margin: 12px;
-}
-.login-link{
     font-size: 20px;
-    text-decoration: none;
-    color: black;
     font-weight: 500;
-    margin-left: 15px;
+    margin: 8px 0;
+    color: #333;
+    text-align: left;
+    width: 100%;
+    max-width: 300px;
+}
+
+.login-link{
+    font-size: 18px;
+    text-decoration: none;
+    color: #667eea;
+    font-weight: 500;
+    margin-top: 20px;
+    transition: color 0.3s ease;
+    position: relative;
+}
+
+.login-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -3px;
+    left: 0;
+    background-color: #667eea;
+    transition: width 0.3s ease;
+}
+
+.login-link:hover::after {
+    width: 100%;
+}
+
+.login-link:hover {
+    color: #764ba2;
+}
+
+/* Add a subtle animation to the form */
+.form-div {
+    animation: slideIn 0.6s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .form-div {
+        padding: 30px;
+        min-width: 300px;
+        margin: 20px;
+    }
+    
+    input {
+        max-width: 250px;
+    }
+    
+    label {
+        max-width: 250px;
+    }
 }

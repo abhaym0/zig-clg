@@ -14,12 +14,116 @@
       padding: 5px 10px;
       border: none;
       cursor: pointer;
+      margin: 2px;
+    }
+    .unban-btn {
+      background-color: #28a745;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      cursor: pointer;
+      margin: 2px;
+    }
+    .delete-btn {
+      background-color: #dc3545;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      cursor: pointer;
+      margin: 2px;
+    }
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .broadcast-section {
+      background-color: #f8f9fa;
+    }
+    .broadcast-input {
+      width: 70%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .broadcast-btn {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .online-status {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .offline-status {
+      color: #6c757d;
+    }
+    .message-item {
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      position: relative;
+    }
+    .message-delete {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #ddd;
+    }
+    .logout-btn {
+      background-color: #6c757d;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .logout-btn:hover {
+      background-color: #5a6268;
     }
   </style>
 </head>
 <body>
-  <h2>Admin Dashboard</h2>
-  <div>
+  <div class="header">
+    <h2>Admin Dashboard</h2>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+  
+  <!-- Broadcast Message Section -->
+  <div class="section broadcast-section">
+    <h3>Broadcast Message</h3>
+    <input type="text" id="broadcastInput" class="broadcast-input" placeholder="Enter message to broadcast to all users...">
+    <button class="broadcast-btn" onclick="sendBroadcast()">Send Broadcast</button>
+  </div>
+  
+  <!-- Online Users Section -->
+  <div class="section">
+    <h3>Online Users</h3>
+    <div id="online-users">Loading...</div>
+  </div>
+  
+  <!-- User Management Section -->
+  <div class="section">
     <h3>Registered Users</h3>
     <table id="user-table">
       <thead>
@@ -28,6 +132,7 @@
           <th>Username</th>
           <th>IP</th>
           <th>Device ID</th>
+          <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -36,28 +141,70 @@
       </tbody>
     </table>
   </div>
+  
+  <!-- Chat Messages Section -->
+  <div class="section">
+    <h3> Public Chat Messages</h3>
+    <div id="messages-container">Loading...</div>
+  </div>
 
-   <script>
+  <script>
+    let onlineUsers = [];
+    
+    // Check if admin is logged in
+    function checkAdminAuth() {
+      const isLoggedIn = localStorage.getItem('isAdminLoggedIn');
+      if (!isLoggedIn || isLoggedIn !== 'true') {
+        window.location.href = '/templates/admin-login.html';
+        return false;
+      }
+      return true;
+    }
+    
+    // Load all data on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!checkAdminAuth()) return;
+      
+      // Display admin info
+      const adminName = localStorage.getItem('adminName') || 'Admin';
+      document.title = `Admin Panel - ${adminName}`;
+      
+      loadUsers();
+      loadOnlineUsers();
+      loadMessages();
+      
+      // Refresh online users every 30 seconds
+      setInterval(loadOnlineUsers, 30000);
+    });
+    
+    // Load registered users
     async function loadUsers() {
       try {
         const response = await fetch("http://localhost:8900/api/users", {
-          method: "GET",
-          // mode: "cors"
+          method: "GET"
         });
-        const data = await response.json();
-
+        const users = await response.json();
+        
         const tableBody = document.getElementById("user-table").querySelector("tbody");
-        data.forEach(user => {
+        tableBody.innerHTML = "";
+        
+        users.forEach(user => {
+          const isOnline = onlineUsers.includes(user.username);
+          const statusText = isOnline ? " Online" : " Offline";
+          const statusClass = isOnline ? "online-status" : "offline-status";
+          
           const row = document.createElement("tr");
           row.innerHTML = `
             <td>${user.name}</td>
             <td>${user.username}</td>
             <td>${user.ip}</td>
             <td>${user.device_id}</td>
+            <td class="${statusClass}">${statusText}</td>
             <td>
               <button class="kick-btn" onclick="kickUser('${user.username}')">Kick</button>
               <button class="ban-btn" onclick="banUser('${user.username}')">Ban</button>
-              <button class="ban-btn" onclick="deleteUser('${user.username}')">Delete Acc.</button>
+              <button class="unban-btn" onclick="unbanUser('${user.username}')">Unban</button>
+              <button class="delete-btn" onclick="deleteUser('${user.username}')">Delete Acc.</button>
             </td>`;
           tableBody.appendChild(row);
         });
@@ -65,48 +212,219 @@
         console.error("Error loading users:", error);
       }
     }
-
-    loadUsers();
-
-    // async function kickUser(username) {
-    //   try {
-    //     await fetch(`http://localhost:8900/api/kick/${username}`, {
-    //       method: "POST",
-    //       mode: "cors"
-    //     });
-    //     alert(`User ${username} kicked.`);
-    //   } catch (error) {
-    //     console.error(`Failed to kick ${username}:`, error);
-    //   }
-    // }
-
-    // async function banUser(username) {
-    //   try {
-    //     await fetch(`http://localhost:8900/api/ban/${username}`, {
-    //       method: "POST",
-    //       mode: "cors"
-    //     });
-    //     alert(`User ${username} banned.`);
-    //   } catch (error) {
-    //     console.error(`Failed to ban ${username}:`, error);
-    //   }
-    // }
-
-    // Load users on page load
-    // loadUsers();
-  </script>
-
-  <script>
-     const fetchUsers = async ()=>{
-      const result = await fetch("http://localhost:8900/api/users", {
-        method: "GET",
-      });
-      const data = await result.json();
-      console.log(data);
-      console.log("Hello")
-     }
-
-     fetchUsers();
+    
+    // Load online users
+    async function loadOnlineUsers() {
+      try {
+        const response = await fetch("http://localhost:8900/api/admin/online-users", {
+          method: "GET"
+        });
+        const data = await response.json();
+        onlineUsers = data.online_users || [];
+        
+        const container = document.getElementById("online-users");
+        if (onlineUsers.length === 0) {
+          container.innerHTML = "<p>No users currently online</p>";
+        } else {
+          container.innerHTML = `<p><strong>${onlineUsers.length} users online:</strong> ${onlineUsers.join(", ")}</p>`;
+        }
+        
+        // Update user table with online status
+        loadUsers();
+      } catch (error) {
+        console.error("Error loading online users:", error);
+        document.getElementById("online-users").innerHTML = "<p>Error loading online users</p>";
+      }
+    }
+    
+    // Load public messages
+    async function loadMessages() {
+      try {
+        const response = await fetch("http://localhost:8900/api/admin/messages", {
+          method: "GET"
+        });
+        const messages = await response.json();
+        
+        const container = document.getElementById("messages-container");
+        container.innerHTML = "";
+        
+        if (messages.length === 0) {
+          container.innerHTML = "<p>No messages found</p>";
+        } else {
+          messages.forEach(message => {
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message-item";
+            messageDiv.innerHTML = `
+              <button class="message-delete" onclick="deleteMessage(${message.id})">Delete</button>
+              <strong>${message.sender}:</strong> ${message.content}
+              <br><small>${message.timestamp}</small>
+            `;
+            container.appendChild(messageDiv);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading messages:", error);
+        document.getElementById("messages-container").innerHTML = "<p>Error loading messages</p>";
+      }
+    }
+    
+    // Admin actions
+    async function kickUser(username) {
+      if (!confirm(`Are you sure you want to kick ${username}?`)) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8900/api/admin/kick/${username}`, {
+          method: "POST"
+        });
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          alert(`User ${username} has been kicked`);
+          loadOnlineUsers();
+        } else {
+          alert(`Failed to kick user: ${result.message}`);
+        }
+      } catch (error) {
+        console.error(`Failed to kick ${username}:`, error);
+        alert(`Error kicking user: ${error.message}`);
+      }
+    }
+    
+    async function banUser(username) {
+      if (!confirm(`Are you sure you want to BAN ${username}? This will prevent them from logging in.`)) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8900/api/admin/ban/${username}`, {
+          method: "POST"
+        });
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          alert(`User ${username} has been banned`);
+          loadOnlineUsers();
+        } else {
+          alert(`Failed to ban user: ${result.message}`);
+        }
+      } catch (error) {
+        console.error(`Failed to ban ${username}:`, error);
+        alert(`Error banning user: ${error.message}`);
+      }
+    }
+    
+    async function unbanUser(username) {
+      if (!confirm(`Are you sure you want to UNBAN ${username}? This will allow them to log in again.`)) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8900/api/admin/unban/${username}`, {
+          method: "POST"
+        });
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          alert(`User ${username} has been unbanned`);
+          loadUsers();
+        } else {
+          alert(`Failed to unban user: ${result.message}`);
+        }
+      } catch (error) {
+        console.error(`Failed to unban ${username}:`, error);
+        alert(`Error unbanning user: ${error.message}`);
+      }
+    }
+    
+    async function deleteUser(username) {
+      if (!confirm(`Are you sure you want to DELETE ${username}'s account? This action cannot be undone.`)) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8900/api/admin/delete/${username}`, {
+          method: "POST"
+        });
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          alert(`User ${username}'s account has been deleted`);
+          loadUsers();
+          loadOnlineUsers();
+        } else {
+          alert(`Failed to delete user: ${result.message}`);
+        }
+      } catch (error) {
+        console.error(`Failed to delete ${username}:`, error);
+        alert(`Error deleting user: ${error.message}`);
+      }
+    }
+    
+    async function deleteMessage(messageId) {
+      if (!confirm(`Are you sure you want to delete this message?`)) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8900/api/admin/messages/${messageId}`, {
+          method: "DELETE"
+        });
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          loadMessages(); // Refresh messages
+        } else {
+          alert(`Failed to delete message: ${result.message}`);
+        }
+      } catch (error) {
+        console.error(`Failed to delete message:`, error);
+        alert(`Error deleting message: ${error.message}`);
+      }
+    }
+    
+    async function sendBroadcast() {
+      const input = document.getElementById("broadcastInput");
+      const message = input.value.trim();
+      
+      if (!message) {
+        alert("Please enter a message to broadcast");
+        return;
+      }
+      
+      try {
+        const response = await fetch("http://localhost:8900/api/admin/broadcast", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message: message })
+        });
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          alert("Broadcast message sent successfully!");
+          input.value = "";
+          loadMessages(); // Refresh messages to show the broadcast
+        } else {
+          alert(`Failed to send broadcast: ${result.message}`);
+        }
+      } catch (error) {
+        console.error("Failed to send broadcast:", error);
+        alert(`Error sending broadcast: ${error.message}`);
+      }
+    }
+    
+    // Allow Enter key to send broadcast
+    document.getElementById("broadcastInput").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        sendBroadcast();
+      }
+    });
+    
+    // Logout function
+    function logout() {
+      if (confirm("Are you sure you want to logout?")) {
+        // Clear localStorage
+        localStorage.removeItem('isAdminLoggedIn');
+        localStorage.removeItem('adminName');
+        localStorage.removeItem('adminUsername');
+        
+        // Redirect to login page
+        window.location.href = '/templates/admin-login.html';
+      }
+    }
   </script>
 </body>
 </html>

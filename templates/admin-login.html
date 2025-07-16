@@ -1,57 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login</title>
-  <link rel="stylesheet" href="./css/register.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .login-container {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      width: 400px;
+      text-align: center;
+    }
+    .login-title {
+      font-size: 28px;
+      margin-bottom: 30px;
+      color: #333;
+      font-weight: bold;
+    }
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: bold;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .login-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 18px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .login-btn:hover {
+      transform: translateY(-2px);
+    }
+    .error-message {
+      color: #e74c3c;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+    .admin-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
-
 <body>
-  <div class="main">
-    <div class="form-div">
-      <h2>Login</h2>
-      <form id="loginForm">
-        <label>Admin Username</label><br />
-        <input type="text" class="username" placeholder="Enter your username" /><br />
-        <label>Admin Password</label><br />
-        <input type="password" class="pass" placeholder="Enter the password" /><br />
-        <button type="submit" class="btn">Login</button><br />
-      </form>
-    </div>
+  <div class="login-container">
+    <div class="admin-icon">🛡️</div>
+    <h2 class="login-title">Admin Login</h2>
+    
+    <form id="adminLoginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      
+      <button type="submit" class="login-btn">Login</button>
+      <div id="errorMessage" class="error-message"></div>
+    </form>
   </div>
 
   <script>
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const username = document.querySelector(".username").value;
-      const password = document.querySelector(".pass").value;
-
-      const res = await fetch("http://localhost:8900/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ username, password })
-      });
-
-      const data = await res.json();
-      console.log(data);
-
-      if (data.status === "success") {
-        // Save to localStorage
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("name", data.name || "");
-        // alert("Login successful!");
-        // redirect to chat page
-        window.location.href = "/templates/test.html";
-      } else {
-        alert("Login failed: " + data.message);
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('errorMessage');
+      
+      try {
+        const response = await fetch(`http://${window.location.hostname}:8900/api/admin/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          // Store admin info in localStorage
+          localStorage.setItem('adminUsername', result.username);
+          localStorage.setItem('adminName', result.name);
+          localStorage.setItem('adminId', result.id);
+          localStorage.setItem('isAdminLoggedIn', 'true');
+          
+          // Redirect to admin dashboard
+          window.location.href = '/templates/admin.html';
+        } else {
+          errorDiv.textContent = result.message || 'Login failed';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorDiv.textContent = 'Connection error. Please try again.';
       }
     });
   </script>
 </body>
-
 </html>
