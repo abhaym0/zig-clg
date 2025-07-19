@@ -1,6 +1,6 @@
 import asyncio
 import json
-from db import insert_message, get_all_messages, get_private_messages
+from db import insert_message, get_all_messages, get_private_messages, is_user_banned, is_user_temporarily_kicked
 
 connected_clients = {}  # { websocket: username }
 
@@ -25,6 +25,23 @@ async def handle_ws(connection):
 
         if not username:
             await connection.send(json.dumps({"type": "error", "message": "Username required"}))
+            return
+        
+        # Check if user is banned
+        if is_user_banned(username):
+            await connection.close(code=1008, reason="You have been banned")
+            return
+        
+        # Check if user is temporarily kicked
+        kick_status = is_user_temporarily_kicked(username)
+        if kick_status["is_kicked"]:
+            import datetime
+            kick_until = datetime.datetime.fromisoformat(kick_status["kick_until"])
+            remaining_time = kick_until - datetime.datetime.now()
+            minutes_remaining = int(remaining_time.total_seconds() / 60)
+            
+            kick_message = f"You are temporarily restricted from joining the chat. {minutes_remaining} minutes remaining. Reason: {kick_status['reason']}"
+            await connection.close(code=1008, reason=kick_message)
             return
 
         connected_clients[connection] = username

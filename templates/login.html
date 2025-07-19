@@ -48,7 +48,23 @@
         // redirect to chat page
         window.location.href = "/templates/test.html";
       } else {
-        alert("Login failed: " + data.message);
+        // Handle different types of login failures
+        if (data.redirect === "banned") {
+          // User is banned, redirect to banned page
+          localStorage.setItem("username", username); // Store username for banned page
+          window.location.href = "/templates/banned.html";
+        } else if (data.redirect === "kicked_temp") {
+          // User is temporarily kicked, redirect to kicked page with info
+          localStorage.setItem("username", username);
+          localStorage.setItem("kick_info", JSON.stringify({
+            minutes_remaining: data.minutes_remaining,
+            reason: data.reason
+          }));
+          window.location.href = "/templates/kicked.html";
+        } else {
+          // Regular login failure
+          alert("Login failed: " + data.message);
+        }
       }
     });
   </script>

@@ -42,6 +42,17 @@ def init_db():
     except sqlite3.OperationalError:
         pass  # Column already exists
     
+    # Add temporary kick columns if they don't exist
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN kick_until DATETIME DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN kick_reason TEXT DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    
     # Create admin table
     c.execute("""
     CREATE TABLE IF NOT EXISTS admins (
@@ -133,7 +144,24 @@ def login_user(username, password):
         if user[4] == 1:  # is_banned column
             return {
                 "status": "error",
+                "redirect": "banned",
                 "message": "Your account has been banned. Contact admin for support."
+            }
+        
+        # Check if user is temporarily kicked
+        kick_status = is_user_temporarily_kicked(username)
+        if kick_status["is_kicked"]:
+            import datetime
+            kick_until = datetime.datetime.fromisoformat(kick_status["kick_until"])
+            remaining_time = kick_until - datetime.datetime.now()
+            minutes_remaining = int(remaining_time.total_seconds() / 60)
+            
+            return {
+                "status": "error",
+                "redirect": "kicked_temp",
+                "message": f"You are temporarily restricted from joining the chat. {minutes_remaining} minutes remaining. Reason: {kick_status['reason']}",
+                "minutes_remaining": minutes_remaining,
+                "reason": kick_status["reason"]
             }
         
         return {
@@ -310,6 +338,55 @@ def login_admin(username, password):
             "status": "error",
             "message": "Invalid admin credentials"
         }
+
+# Temporary kick functions
+def set_temporary_kick(username, duration_minutes, reason="No reason provided"):
+    """Set a temporary kick for a user"""
+    import datetime
+    kick_until = datetime.datetime.now() + datetime.timedelta(minutes=duration_minutes)
+    
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE users SET kick_until = ?, kick_reason = ? WHERE username = ?
+    """, (kick_until.isoformat(), reason, username))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"User {username} temporarily kicked for {duration_minutes} minutes"}
+
+def clear_temporary_kick(username):
+    """Clear temporary kick for a user"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE users SET kick_until = NULL, kick_reason = NULL WHERE username = ?
+    """, (username,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Temporary kick cleared for {username}"}
+
+def is_user_temporarily_kicked(username):
+    """Check if user is currently temporarily kicked"""
+    import datetime
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("SELECT kick_until, kick_reason FROM users WHERE username = ?", (username,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result and result[0]:
+        kick_until = datetime.datetime.fromisoformat(result[0])
+        if datetime.datetime.now() < kick_until:
+            return {
+                "is_kicked": True,
+                "kick_until": result[0],
+                "reason": result[1] or "No reason provided"
+            }
+        else:
+            # Kick expired, clear it
+            clear_temporary_kick(username)
+    
+    return {"is_kicked": False}
 
 # Function to create default admin (call this manually if needed)
 def create_default_admin():

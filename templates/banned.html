@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Restricted - Chat Application</title>
+    <title>Account Banned - Chat Application</title>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
     <style>
         * {
@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -22,10 +22,10 @@
             color: #333;
         }
 
-        .kicked-container {
+        .banned-container {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
             padding: 60px 40px;
             text-align: center;
             max-width: 500px;
@@ -34,17 +34,17 @@
             overflow: hidden;
         }
 
-        .kicked-container::before {
+        .banned-container::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             height: 5px;
-            background: linear-gradient(90deg, #e74c3c, #f39c12, #e74c3c);
+            background: linear-gradient(90deg, #e74c3c, #c0392b, #e74c3c);
         }
 
-        .kicked-icon {
+        .banned-icon {
             font-size: 4rem;
             color: #e74c3c;
             margin-bottom: 20px;
@@ -57,32 +57,54 @@
             100% { transform: scale(1); }
         }
 
-        .kicked-title {
+        .banned-title {
             font-size: 2.5rem;
-            color: #2c3e50;
+            color: #c0392b;
             margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .banned-subtitle {
+            font-size: 1.3rem;
+            color: #e74c3c;
+            margin-bottom: 30px;
             font-weight: 600;
         }
 
-        .kicked-subtitle {
-            font-size: 1.2rem;
-            color: #e74c3c;
-            margin-bottom: 30px;
-            font-weight: 500;
-        }
-
-        .kicked-message {
+        .banned-message {
             font-size: 1.1rem;
             color: #666;
             line-height: 1.6;
             margin-bottom: 40px;
         }
 
-        .kicked-message p {
+        .banned-message p {
             margin-bottom: 15px;
         }
 
-        .kicked-actions {
+        .ban-notice {
+            background: #ffebee;
+            border: 2px solid #ffcdd2;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .ban-notice h4 {
+            color: #c62828;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .ban-notice p {
+            color: #d32f2f;
+            font-weight: 500;
+        }
+
+        .banned-actions {
             display: flex;
             gap: 15px;
             justify-content: center;
@@ -105,16 +127,6 @@
             justify-content: center;
         }
 
-        .btn-primary {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
-        }
-
         .btn-secondary {
             background: linear-gradient(45deg, #95a5a6, #7f8c8d);
             color: white;
@@ -135,7 +147,7 @@
             box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
         }
 
-        .kicked-footer {
+        .banned-footer {
             margin-top: 40px;
             padding-top: 20px;
             border-top: 1px solid #eee;
@@ -143,25 +155,25 @@
             font-size: 0.9rem;
         }
 
-        .kicked-footer a {
-            color: #3498db;
+        .banned-footer a {
+            color: #e74c3c;
             text-decoration: none;
         }
 
-        .kicked-footer a:hover {
+        .banned-footer a:hover {
             text-decoration: underline;
         }
 
         @media (max-width: 600px) {
-            .kicked-container {
+            .banned-container {
                 padding: 40px 20px;
             }
             
-            .kicked-title {
+            .banned-title {
                 font-size: 2rem;
             }
             
-            .kicked-actions {
+            .banned-actions {
                 flex-direction: column;
                 align-items: center;
             }
@@ -216,30 +228,30 @@
 </head>
 <body>
     <div class="floating-elements">
-        <i class="ri-shield-cross-line floating-element" style="font-size: 3rem;"></i>
+        <i class="ri-forbid-line floating-element" style="font-size: 3rem;"></i>
         <i class="ri-error-warning-line floating-element" style="font-size: 2.5rem;"></i>
-        <i class="ri-lock-line floating-element" style="font-size: 2rem;"></i>
+        <i class="ri-shield-cross-line floating-element" style="font-size: 2rem;"></i>
     </div>
 
-    <div class="kicked-container">
-        <div class="kicked-icon">
-            <i class="ri-shield-cross-line"></i>
+    <div class="banned-container">
+        <div class="banned-icon">
+            <i class="ri-forbid-line"></i>
         </div>
         
-        <h1 class="kicked-title">Access Restricted</h1>
-        <p class="kicked-subtitle">You have been removed from the chat</p>
+        <h1 class="banned-title">Account Banned</h1>
+        <p class="banned-subtitle">Your access has been permanently restricted</p>
         
-        <div class="kicked-message">
-            <p>An administrator has disconnected you from the chat room.</p>
-            <p>This action was taken to maintain a safe and respectful environment for all users.</p>
-            <div id="kick-details"></div>
+        <div class="banned-message">
+            <p>An administrator has permanently banned your account from the chat room.</p>
+            <p>This action was taken due to violations of our community guidelines and terms of service.</p>
+        </div>
+
+        <div class="ban-notice">
+            <h4><i class="ri-alert-line"></i> Important Notice</h4>
+            <p>You cannot rejoin the chat until an administrator removes this ban from your account.</p>
         </div>
         
-        <div class="kicked-actions">
-            <button class="btn btn-primary" onclick="reconnectToChat()">
-                <i class="ri-refresh-line"></i>
-                Reconnect
-            </button>
+        <div class="banned-actions">
             <button class="btn btn-secondary" onclick="goToHome()">
                 <i class="ri-home-line"></i>
                 Go Home
@@ -250,8 +262,8 @@
             </button>
         </div>
         
-        <div class="kicked-footer">
-            <p>If you believe this was a mistake, please contact an administrator.</p>
+        <div class="banned-footer">
+            <p>If you believe this ban was issued in error, please contact an administrator for review.</p>
             <p><a href="#" onclick="showContactInfo()">Contact Support</a></p>
         </div>
     </div>
@@ -260,11 +272,6 @@
         // Get user information from localStorage
         const currentUsername = localStorage.getItem("username");
         const currentName = localStorage.getItem("name") || "Unknown";
-
-        function reconnectToChat() {
-            // Redirect back to the chat page
-            window.location.href = "/templates/test.html";
-        }
 
         function goToHome() {
             // Redirect to the main/home page
@@ -278,75 +285,25 @@
         }
 
         function showContactInfo() {
-            alert("Contact support at: admin@chatapp.com\nOr join our support channel for assistance.");
+            alert("Contact support at: admin@chatapp.com\nOr join our support channel for assistance.\n\nNote: Bans are permanent until reviewed by an administrator.");
         }
 
         // Add some dynamic behavior
         document.addEventListener("DOMContentLoaded", function() {
-            // Log the kick event (for analytics/debugging)
-            console.log(`User ${currentUsername} was kicked and redirected to kicked page`);
-            
-            // Check if this is a temporary kick with countdown
-            const kickInfo = localStorage.getItem("kick_info");
-            if (kickInfo) {
-                const info = JSON.parse(kickInfo);
-                setupTemporaryKickCountdown(info.minutes_remaining, info.reason);
-                localStorage.removeItem("kick_info"); // Clean up
-            } else {
-                // Regular kick message
-                document.getElementById("kick-details").innerHTML = `
-                    <p style="color: #f39c12; font-weight: 500; margin-top: 15px;">⚠️ You can try to reconnect, but please ensure you follow the community guidelines.</p>
-                `;
-            }
+            // Log the ban event (for analytics/debugging)
+            console.log(`User ${currentUsername} was banned and redirected to banned page`);
         });
-        
-        function setupTemporaryKickCountdown(minutes, reason) {
-            let remainingSeconds = minutes * 60;
-            
-            const detailsDiv = document.getElementById("kick-details");
-            const reconnectBtn = document.querySelector('.btn-primary');
-            
-            // Initially disable reconnect button
-            reconnectBtn.disabled = true;
-            reconnectBtn.style.opacity = '0.5';
-            reconnectBtn.style.cursor = 'not-allowed';
-            
-            function updateDisplay() {
-                const mins = Math.floor(remainingSeconds / 60);
-                const secs = remainingSeconds % 60;
-                
-                detailsDiv.innerHTML = `
-                    <div style="background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 10px; padding: 20px; margin: 20px 0;">  
-                        <h4 style="color: #856404; margin-bottom: 10px;">⏰ Temporary Restriction</h4>
-                        <p style="color: #856404; margin-bottom: 10px;"><strong>Reason:</strong> ${reason}</p>
-                        <p style="color: #d32f2f; font-size: 1.2rem; font-weight: bold;">Time remaining: ${mins}:${secs.toString().padStart(2, '0')}</p>
-                        ${remainingSeconds <= 0 ? '<p style="color: #28a745; font-weight: bold;">✅ You can now reconnect to the chat!</p>' : ''}
-                    </div>
-                `;
-                
-                if (remainingSeconds <= 0) {
-                    // Enable reconnect button
-                    reconnectBtn.disabled = false;
-                    reconnectBtn.style.opacity = '1';
-                    reconnectBtn.style.cursor = 'pointer';
-                    reconnectBtn.innerHTML = `
-                        <i class="ri-refresh-line"></i>
-                        Reconnect (Available)
-                    `;
-                    return; // Stop the countdown
-                }
-                
-                remainingSeconds--;
-                setTimeout(updateDisplay, 1000);
-            }
-            
-            updateDisplay();
-        }
 
         // Prevent going back to chat directly
         window.addEventListener("beforeunload", function() {
             // You could add additional logic here if needed
         });
+
+        // Prevent using browser back button to return to chat
+        history.pushState(null, null, location.href);
+        window.onpopstate = function() {
+            history.go(1);
+        };
     </script>
 </body>
 </html>

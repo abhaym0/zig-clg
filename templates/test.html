@@ -73,8 +73,11 @@
     ws.onclose = (event) => {
       console.log('WebSocket closed:', event);
       
-      // Check if the close reason indicates a kick
-      if (event.reason === "You have been kicked by admin") {
+      // Check if the close reason indicates different admin actions
+      if (event.reason === "You have been banned") {
+        // Redirect to banned page
+        window.location.href = "/templates/banned.html";
+      } else if (event.reason === "You have been kicked by admin" || event.reason.includes("temporarily kicked")) {
         // Redirect to kicked page
         window.location.href = "/templates/kicked.html";
       } else {

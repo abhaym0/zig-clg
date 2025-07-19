@@ -201,11 +201,11 @@
             <td>${user.device_id}</td>
             <td class="${statusClass}">${statusText}</td>
             <td>
-              <button class="kick-btn" onclick="kickUser('${user.username}')">Kick</button>
+              <button class="kick-btn" onclick="showKickDialog('${user.username}')">Kick</button>
               <button class="ban-btn" onclick="banUser('${user.username}')">Ban</button>
               <button class="unban-btn" onclick="unbanUser('${user.username}')">Unban</button>
               <button class="delete-btn" onclick="deleteUser('${user.username}')">Delete Acc.</button>
-            </td>`;
+            </td>`
           tableBody.appendChild(row);
         });
       } catch (error) {
@@ -268,18 +268,53 @@
       }
     }
     
+    // Enhanced kick dialog
+    function showKickDialog(username) {
+      const duration = prompt(
+        `Kick Options for ${username}:\n\n` +
+        `Enter 0 for immediate kick only (user can reconnect)\n` +
+        `Enter minutes (e.g., 10) for temporary kick\n` +
+        `Cancel to abort\n\n` +
+        `Duration in minutes (0 = immediate kick only):`
+      );
+      
+      if (duration === null) return; // User cancelled
+      
+      const durationNum = parseInt(duration);
+      if (isNaN(durationNum) || durationNum < 0) {
+        alert("Please enter a valid number (0 or positive integer)");
+        return;
+      }
+      
+      let reason = "";
+      if (durationNum > 0) {
+        reason = prompt(`Enter reason for temporary kick (${durationNum} minutes):`) || "No reason provided";
+      }
+      
+      kickUser(username, durationNum, reason);
+    }
+    
     // Admin actions
-    async function kickUser(username) {
-      if (!confirm(`Are you sure you want to kick ${username}?`)) return;
+    async function kickUser(username, durationMinutes = 0, reason = "Kicked by admin") {
+      const kickType = durationMinutes > 0 ? `temporarily kick for ${durationMinutes} minutes` : "kick";
+      
+      if (!confirm(`Are you sure you want to ${kickType} ${username}?`)) return;
       
       try {
+        const requestBody = durationMinutes > 0 ? 
+          { duration_minutes: durationMinutes, reason: reason } : {};
+        
         const response = await fetch(`http://localhost:8900/api/admin/kick/${username}`, {
-          method: "POST"
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
         });
         const result = await response.json();
         
         if (result.status === "success") {
-          alert(`User ${username} has been kicked`);
+          alert(result.message);
           loadOnlineUsers();
         } else {
           alert(`Failed to kick user: ${result.message}`);

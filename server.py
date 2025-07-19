@@ -3,7 +3,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 import threading, asyncio, websockets, os, json #type: ignore
 from websocket_handler import handle_ws
-from db import init_db, register_user, fetchAllUsers, ban_user, unban_user, delete_user_account, get_all_public_messages, delete_message, get_online_users, insert_admin_message, login_admin, create_default_admin, get_user_by_username
+from db import init_db, register_user, fetchAllUsers, ban_user, unban_user, delete_user_account, get_all_public_messages, delete_message, get_online_users, insert_admin_message, login_admin, create_default_admin, get_user_by_username, set_temporary_kick, clear_temporary_kick, is_user_temporarily_kicked
 import socket
 from aiohttp import web #type: ignore
 import aiofiles
@@ -246,20 +246,38 @@ async def upload_file(request):
 
 # Admin API endpoints
 async def handle_kick_user(request):
-    """Kick a user (disconnect them from WebSocket)"""
+    """Kick a user with optional temporary restriction"""
     try:
         username = request.match_info['username']
+        data = await request.json() if request.content_type == 'application/json' else {}
+        
+        duration_minutes = data.get("duration_minutes", 0)
+        reason = data.get("reason", "Kicked by admin")
+        
+        # If duration is specified, set temporary kick
+        if duration_minutes > 0:
+            set_temporary_kick(username, duration_minutes, reason)
+            kick_message = f"You have been temporarily kicked for {duration_minutes} minutes. Reason: {reason}"
+        else:
+            kick_message = "You have been kicked by admin"
         
         # Find and disconnect the user from WebSocket
         from websocket_handler import connected_clients
         for ws, user in connected_clients.items():
             if user == username:
-                await ws.close(code=1000, reason="You have been kicked by admin")
+                await ws.close(code=1000, reason=kick_message)
                 break
         
-        return web.json_response({"status": "success", "message": f"User {username} kicked"}, headers={
-            "Access-Control-Allow-Origin": "*"
-        })
+        if duration_minutes > 0:
+            return web.json_response({
+                "status": "success", 
+                "message": f"User {username} temporarily kicked for {duration_minutes} minutes"
+            }, headers={"Access-Control-Allow-Origin": "*"})
+        else:
+            return web.json_response({
+                "status": "success", 
+                "message": f"User {username} kicked"
+            }, headers={"Access-Control-Allow-Origin": "*"})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
