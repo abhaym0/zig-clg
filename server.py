@@ -3,7 +3,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 import threading, asyncio, websockets, os, json #type: ignore
 from websocket_handler import handle_ws
-from db import init_db, register_user, fetchAllUsers, ban_user, unban_user, delete_user_account, get_all_public_messages, delete_message, get_online_users, insert_admin_message, login_admin, create_default_admin, get_user_by_username, set_temporary_kick, clear_temporary_kick, is_user_temporarily_kicked
+from db import init_db, register_user, fetchAllUsers, ban_user, unban_user, delete_user_account, get_all_public_messages, delete_message, admin_delete_message, get_online_users, insert_admin_message, login_admin, create_default_admin, get_user_by_username, set_temporary_kick, clear_temporary_kick, is_user_temporarily_kicked
 import socket
 from aiohttp import web #type: ignore
 import aiofiles
@@ -330,10 +330,23 @@ async def handle_get_messages(request):
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
 async def handle_delete_message(request):
-    """Delete a message"""
+    """Delete a message (admin endpoint)"""
     try:
         message_id = request.match_info['message_id']
-        result = delete_message(int(message_id))
+        result = admin_delete_message(int(message_id))
+        
+        # Also notify WebSocket clients about the deletion
+        if result["status"] == "success":
+            from websocket_handler import connected_clients
+            for ws in connected_clients:
+                try:
+                    await ws.send(json.dumps({
+                        "type": "message_deleted",
+                        "message_id": int(message_id)
+                    }))
+                except Exception as e:
+                    print(f"Error sending delete notification: {e}")
+        
         return web.json_response(result, headers={
             "Access-Control-Allow-Origin": "*"
         })

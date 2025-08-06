@@ -63,6 +63,18 @@ def init_db():
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
+    
+    # Create unread_messages table for tracking unread message counts
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS unread_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        chat_partner TEXT NOT NULL,  -- 'PUBLIC' for public chat or username for private chat
+        unread_count INTEGER DEFAULT 0,
+        last_read_message_id INTEGER DEFAULT 0,
+        UNIQUE(username, chat_partner)
+    );
+    """)
 
     conn.commit()
     conn.close()
@@ -74,18 +86,20 @@ def insert_message(sender, msg_type, content, file_name="", recipient=None, is_p
         INSERT INTO messages (sender, type, content, file_name, recipient, is_private)
         VALUES (?, ?, ?, ?, ?, ?)
     """, (sender, msg_type, content, file_name, recipient, is_private))
+    message_id = c.lastrowid
     conn.commit()
     conn.close()
+    return message_id
 
 def get_all_messages():
     """Get all public messages"""
     conn = sqlite3.connect("zig_clg.db")
     c = conn.cursor()
-    c.execute("SELECT sender, type, content, file_name FROM messages WHERE is_private = 0")
+    c.execute("SELECT id, sender, type, content, file_name, timestamp FROM messages WHERE is_private = 0 ORDER BY timestamp ASC")
     rows = c.fetchall()
     conn.close()
     return [
-        {"sender": r[0], "type": r[1], "content": r[2], "fileName": r[3]} for r in rows
+        {"id": r[0], "sender": r[1], "type": r[2], "content": r[3], "fileName": r[4], "timestamp": r[5]} for r in rows
     ]
 
 def get_private_messages(user1, user2):
@@ -93,7 +107,7 @@ def get_private_messages(user1, user2):
     conn = sqlite3.connect("zig_clg.db")
     c = conn.cursor()
     c.execute("""
-        SELECT sender, type, content, file_name, timestamp 
+        SELECT id, sender, type, content, file_name, timestamp 
         FROM messages 
         WHERE is_private = 1 
         AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
@@ -102,7 +116,7 @@ def get_private_messages(user1, user2):
     rows = c.fetchall()
     conn.close()
     return [
-        {"sender": r[0], "type": r[1], "content": r[2], "fileName": r[3], "timestamp": r[4]} for r in rows
+        {"id": r[0], "sender": r[1], "type": r[2], "content": r[3], "fileName": r[4], "timestamp": r[5]} for r in rows
     ]
 
 
@@ -267,18 +281,81 @@ def get_all_public_messages():
         for msg in messages
     ]
 
-def delete_message(message_id):
-    """Delete a specific message"""
+def delete_message(message_id, username):
+    """Delete a specific message (user can only delete their own messages)"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM messages WHERE id = ? AND sender = ?", (message_id, username))
+    conn.commit()
+    conn.close()
+    if cursor.rowcount > 0:
+        return {"status": "success", "message": "Message deleted"}
+    else:
+        return {"status": "error", "message": "Message not found or permission denied"}
+
+def admin_delete_message(message_id):
+    """Delete a specific message (admin can delete any message)"""
     conn = sqlite3.connect(db_url)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM messages WHERE id = ?", (message_id,))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": "Message deleted"}
+    if cursor.rowcount > 0:
+        return {"status": "success", "message": "Message deleted"}
+    else:
+        return {"status": "error", "message": "Message not found"}
+
+def get_all_registered_users():
+    """Get all registered users from the database"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, name FROM users ORDER BY username")
+    users = cursor.fetchall()
+    conn.close()
+    
+    return [
+        {
+            "username": user[0],
+            "name": user[1]
+        }
+        for user in users
+    ]
+
+def get_user_last_messages():
+    """Get the last private message from each user (only private messages)"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    
+    # Get all registered users
+    cursor.execute("SELECT username FROM users ORDER BY username")
+    all_users = [row[0] for row in cursor.fetchall()]
+    
+    last_messages = {}
+    
+    # For each user, find their last private message with any other user
+    for user in all_users:
+        cursor.execute("""
+            SELECT content, timestamp FROM messages
+            WHERE is_private = 1 
+            AND (sender = ? OR recipient = ?)
+            ORDER BY timestamp DESC
+            LIMIT 1
+        """, (user, user))
+        
+        result = cursor.fetchone()
+        if result:
+            content, timestamp = result
+            # Truncate long messages for display
+            display_content = content[:50] + "..." if len(content) > 50 else content
+            last_messages[user] = display_content
+        else:
+            last_messages[user] = "No private messages yet"
+    
+    conn.close()
+    return last_messages
 
 def get_online_users():
     """Get list of currently online users (this will be updated from websocket)"""
-    # This will be populated from websocket connections
     from websocket_handler import connected_clients
     return list(connected_clients.values())
 
@@ -393,6 +470,98 @@ def create_default_admin():
     """Create a default admin account"""
     return create_admin("admin", "admin123", "System Admin")
 
+
+# Unread message tracking functions
+def update_unread_count(username, chat_partner, message_id):
+    """Update unread count for a user's chat partner"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    
+    # Insert or update unread count
+    cursor.execute("""
+        INSERT OR REPLACE INTO unread_messages (username, chat_partner, unread_count, last_read_message_id)
+        VALUES (?, ?, 
+            COALESCE((SELECT unread_count FROM unread_messages WHERE username = ? AND chat_partner = ?), 0) + 1,
+            ?)
+    """, (username, chat_partner, username, chat_partner, message_id))
+    
+    conn.commit()
+    conn.close()
+
+def get_unread_count(username, chat_partner):
+    """Get unread message count for a specific chat"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT unread_count FROM unread_messages 
+        WHERE username = ? AND chat_partner = ?
+    """, (username, chat_partner))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else 0
+
+def mark_messages_as_read(username, chat_partner):
+    """Mark all messages as read for a specific chat"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    
+    # Get the latest message ID for this chat
+    if chat_partner == "PUBLIC":
+        cursor.execute("""
+            SELECT MAX(id) FROM messages WHERE is_private = 0
+        """)
+    else:
+        cursor.execute("""
+            SELECT MAX(id) FROM messages 
+            WHERE is_private = 1 
+            AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
+        """, (username, chat_partner, chat_partner, username))
+    
+    latest_message_id = cursor.fetchone()[0] or 0
+    
+    # Reset unread count and update last read message ID
+    cursor.execute("""
+        INSERT OR REPLACE INTO unread_messages (username, chat_partner, unread_count, last_read_message_id)
+        VALUES (?, ?, 0, ?)
+    """, (username, chat_partner, latest_message_id))
+    
+    conn.commit()
+    conn.close()
+
+def get_all_unread_counts(username):
+    """Get unread counts for all chats for a user"""
+    conn = sqlite3.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT chat_partner, unread_count FROM unread_messages 
+        WHERE username = ? AND unread_count > 0
+    """, (username,))
+    results = cursor.fetchall()
+    conn.close()
+    
+    unread_counts = {}
+    for chat_partner, count in results:
+        unread_counts[chat_partner] = count
+    return unread_counts
+
+def increment_unread_for_all_users(sender, chat_partner, message_id):
+    """Increment unread count for all users except the sender"""
+    from websocket_handler import connected_clients
+    
+    # Get all registered users
+    all_users = get_all_registered_users()
+    
+    for user in all_users:
+        username = user['username']
+        # Don't increment for the sender
+        if username != sender:
+            if chat_partner == "PUBLIC":
+                # For public messages, increment for all users
+                update_unread_count(username, "PUBLIC", message_id)
+            else:
+                # For private messages, only increment for the recipient
+                if username == chat_partner:
+                    update_unread_count(username, sender, message_id)
 
 # admin side code
 

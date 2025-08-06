@@ -101,6 +101,21 @@
     .logout-btn:hover {
       background-color: #5a6268;
     }
+    .ou{
+      background: #28a745;
+      margin-right: 15px;
+      margin-left: 15px;
+      color: white;
+      padding: 10px;
+      border-radius: 30px;
+    }
+
+    .ou1{
+      background: green;
+      color: white;
+      padding: 10px;
+      border-radius: 30px;
+    }
   </style>
 </head>
 <body>
@@ -206,7 +221,10 @@
               <button class="unban-btn" onclick="unbanUser('${user.username}')">Unban</button>
               <button class="delete-btn" onclick="deleteUser('${user.username}')">Delete Acc.</button>
             </td>`
+
           tableBody.appendChild(row);
+
+        
         });
       } catch (error) {
         console.error("Error loading users:", error);
@@ -226,7 +244,8 @@
         if (onlineUsers.length === 0) {
           container.innerHTML = "<p>No users currently online</p>";
         } else {
-          container.innerHTML = `<p><strong>${onlineUsers.length} users online:</strong> ${onlineUsers.join(", ")}</p>`;
+          container.innerHTML = `<p><strong>${onlineUsers.length} users online:</strong> 
+            <span class="">${onlineUsers.join("<span class='ou'>")}</span></p>`;
         }
         
         // Update user table with online status

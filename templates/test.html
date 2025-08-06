@@ -17,22 +17,26 @@
         <h3 id="displayName">Name</h3>
         <p id="displayUsername">@username</p>
       </div>
-      <button onclick="logout()">Logout</button>
+      <button onclick="logout()" id="logout">Logout</button>
       <h4>Chats</h4>
-      <button id="public-chat-btn" onclick="goToPublicChat()">📢 Public Chat</button>
+      <button id="public-chat-btn" onclick="goToPublicChat()">
+        📢 Public Chat
+        <span id="public-unread-badge" class="unread-badge" style="display: none;">0</span>
+      </button>
       <ul id="user-list"></ul>
     </div>
 
     <!-- Right Chat Window -->
     <div id="chat-panel">
-        <div id="chat-info">
-          <h4 id="chat-title">Public Chat</h4>
-        </div>
-        <div id="messages"></div>
+      <div id="chat-info">
+        <h4 id="chat-title">Public Chat</h4>
+      </div>
+      <div id="messages"></div>
       <form id="fileForm">
         <label class="file-upload-label">
           <i class="ri-attachment-line"></i>
-          <input type="file" id="fileInput" name="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.docx,.xlsx,.pptx,.zip,.rar" hidden />
+          <input type="file" id="fileInput" name="file"
+            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.docx,.xlsx,.pptx,.zip,.rar" hidden />
           <button type="submit">send</button>
         </label>
       </form>
@@ -45,6 +49,12 @@
 
   <!-- Audio notification -->
   <audio id="notifySound" src="/notification.mp3" preload="auto"></audio>
+
+  <!-- Context Menu for Message Deletion -->
+  <div id="contextMenu"
+    style="display: none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 5px; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000;">
+    <div id="deleteOption" style="padding: 8px 12px; cursor: pointer; border-radius: 3px;">🗑️ Delete Message</div>
+  </div>
 
 
   <script>
@@ -72,7 +82,7 @@
 
     ws.onclose = (event) => {
       console.log('WebSocket closed:', event);
-      
+
       // Check if the close reason indicates different admin actions
       if (event.reason === "You have been banned") {
         // Redirect to banned page
@@ -92,22 +102,105 @@
     };
 
     let activeChatUser = null;
+    let currentMessageId = null;
+
+    // Context menu functionality
+    const contextMenu = document.getElementById('contextMenu');
+    const deleteOption = document.getElementById('deleteOption');
+
+    // Hide context menu when clicking elsewhere
+    document.addEventListener('click', (e) => {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.style.display = 'none';
+      }
+    });
+
+    // Style hover effect for delete option
+    deleteOption.addEventListener('mouseenter', () => {
+      deleteOption.style.backgroundColor = '#f0f0f0';
+    });
+
+    deleteOption.addEventListener('mouseleave', () => {
+      deleteOption.style.backgroundColor = 'transparent';
+    });
+
+    // Handle delete option click
+    deleteOption.addEventListener('click', () => {
+      if (currentMessageId) {
+        ws.send(JSON.stringify({
+          sender: currentUsername,
+          message_type: "delete_message",
+          message_id: currentMessageId
+        }));
+        contextMenu.style.display = 'none';
+        currentMessageId = null;
+      }
+    });
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
-      if (data.type === "user_list") {
+      if (data.type === "message_deleted") {
+        // Remove the deleted message from the UI
+        const messageElement = document.querySelector(`[data-message-id="${data.message_id}"]`);
+        if (messageElement) {
+          messageElement.remove();
+        }
+      } else if (data.type === "user_list") {
         const userList = document.getElementById("user-list");
         userList.innerHTML = "";
+
+        // Update public chat unread badge
+        const publicUnreadBadge = document.getElementById("public-unread-badge");
+        if (data.public_unread_count > 0) {
+          publicUnreadBadge.textContent = data.public_unread_count;
+          publicUnreadBadge.style.display = "inline";
+        } else {
+          publicUnreadBadge.style.display = "none";
+        }
+
         data.users.forEach((user) => {
+          // Skip current user from the list
+          if (user.username === currentUsername) return;
+
           const li = document.createElement("li");
-          li.classList.add("user-list");
-          li.textContent = user;
+          li.classList.add("user-list-item");
           li.style.cursor = "pointer";
+
+          // Create unread badge HTML
+          const unreadBadgeHTML = user.unread_count > 0 ?
+            `<span class="unread-badge">${user.unread_count}</span>` : '';
+
+          // Create user item HTML with online status, last message, and unread badge
+          li.innerHTML = `
+            <div class="user-info">
+              <div class="user-header">
+                <div class="user-name-section">
+                  <span class="username">${user.username}</span>
+                  ${unreadBadgeHTML}
+                </div>
+                <span class="online-status ${user.online ? 'online' : 'offline'}">
+                  ${user.online ? '🟢' : '⚫'}
+                </span>
+              </div>
+              <div class="last-message">
+                ${user.last_message || 'No messages yet'}
+              </div>
+            </div>
+          `;
+
           li.addEventListener("click", () => {
-            activeChatUser = user;
-            document.getElementById("chat-title").textContent = `💬 Chat with ${user}`;
-            loadPrivateMessages(user);
+            activeChatUser = user.username;
+            document.getElementById("chat-title").textContent = `💬 Chat with ${user.username}`;
+
+            // Mark messages as read when opening a chat
+            ws.send(JSON.stringify({
+              sender: currentUsername,
+              message_type: "mark_as_read",
+              chat_partner: user.username
+            }));
+
+            loadPrivateMessages(user.username);
           });
           userList.appendChild(li);
         });
@@ -117,11 +210,20 @@
         data.messages.forEach(msg => {
           const messageWrapper = document.createElement("div");
           messageWrapper.classList.add("message");
+          messageWrapper.setAttribute('data-message-id', msg.id);
 
           if (msg.sender === currentUsername) {
-              messageWrapper.classList.add("my-message");
+            messageWrapper.classList.add("my-message");
+            // Add right-click context menu for own messages
+            messageWrapper.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              currentMessageId = msg.id;
+              contextMenu.style.display = 'block';
+              contextMenu.style.left = e.pageX + 'px';
+              contextMenu.style.top = e.pageY + 'px';
+            });
           } else {
-              messageWrapper.classList.add("other-message");
+            messageWrapper.classList.add("other-message");
           }
 
           messageWrapper.innerHTML = `
@@ -136,12 +238,54 @@
         });
 
       } else {
+        // Check if this message should be displayed in current context
+        const isPrivateMessage = data.message_type === "private";
+        const isInPrivateChat = activeChatUser !== null;
+        const isInPublicChat = activeChatUser === null;
+
+        // Only display message if it matches current chat context
+        let shouldDisplayMessage = false;
+
+        if (isPrivateMessage && isInPrivateChat) {
+          // Private message: only show if it's between current user and the active chat user
+          const isFromActiveChatUser = data.sender === activeChatUser;
+          const isToActiveChatUser = data.recipient === activeChatUser;
+          const isFromCurrentUser = data.sender === currentUsername;
+
+          shouldDisplayMessage = (isFromActiveChatUser && data.recipient === currentUsername) ||
+            (isFromCurrentUser && data.recipient === activeChatUser);
+        } else if (!isPrivateMessage && isInPublicChat) {
+          // Public message: only show in public chat
+          shouldDisplayMessage = true;
+        }
+
+        // If message shouldn't be displayed in current context, don't process it
+        if (!shouldDisplayMessage) {
+          return;
+        }
+
         const messages = document.getElementById("messages");
         const messageWrapper = document.createElement("div");
         messageWrapper.classList.add("message");
 
+        // Add message ID as data attribute
+        if (data.id) {
+          messageWrapper.setAttribute('data-message-id', data.id);
+        }
+
         if (data.sender === currentUsername) {
           messageWrapper.classList.add("my-message");
+
+          // Add right-click context menu for own messages
+          if (data.id) {
+            messageWrapper.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              currentMessageId = data.id;
+              contextMenu.style.display = 'block';
+              contextMenu.style.left = e.pageX + 'px';
+              contextMenu.style.top = e.pageY + 'px';
+            });
+          }
         } else {
           messageWrapper.classList.add("other-message");
 
@@ -170,7 +314,7 @@
         } else if (data.type === 'file') {
           const fileExtension = data.fileName.split('.').pop().toLowerCase();
           let fileIcon = '📄';
-          
+
           // Set appropriate icon based on file type
           if (fileExtension === 'pdf') fileIcon = '📕';
           else if (['doc', 'docx'].includes(fileExtension)) fileIcon = '📘';
@@ -178,7 +322,7 @@
           else if (['ppt', 'pptx'].includes(fileExtension)) fileIcon = '📰';
           else if (['zip', 'rar', '7z'].includes(fileExtension)) fileIcon = '📦';
           else if (['txt'].includes(fileExtension)) fileIcon = '📝';
-          
+
           messageContent = `
             <div class="file-message">
               <a href="${data.content}" target="_blank" download="${data.fileName}" style="text-decoration: none; color: #007bff;">
@@ -254,7 +398,14 @@
       activeChatUser = null;
       document.getElementById("chat-title").textContent = "📢 Public Chat";
       document.getElementById("messages").innerHTML = "";
-      
+
+      // Mark public messages as read
+      ws.send(JSON.stringify({
+        sender: currentUsername,
+        message_type: "mark_as_read",
+        chat_partner: "PUBLIC"
+      }));
+
       // Load public messages
       const previous_messages = [];
       // We'll load them from the server on next connection
@@ -265,27 +416,27 @@
   <script>
     document.getElementById("fileForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      
+
       const fileInput = document.getElementById("fileInput");
       const file = fileInput.files[0];
-      
+
       if (!file) {
         alert("Please select a file first!");
         return;
       }
-      
+
       const formData = new FormData();
       formData.append("sender", currentUsername);
       formData.append("file", file);
-      
+
       try {
         const response = await fetch("http://localhost:8900/api/upload", {
           method: "POST",
           body: formData,
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
           console.log("File uploaded successfully:", result);
           // File will be broadcasted via WebSocket automatically
@@ -296,7 +447,7 @@
         console.error("Upload error:", error);
         alert("Error uploading file: " + error.message);
       }
-      
+
       fileInput.value = ""; // Clear the file input
     });
   </script>
